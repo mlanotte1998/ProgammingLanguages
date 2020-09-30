@@ -28,7 +28,18 @@ import SimpleTests (test)
 type Variable = String
 
 -- |protoScheme expressions
+{- 
+ Only need to add a Float pattern of type double into the protoScheme syntax. 
+ But to make eval work, need eval to return either an Integer or a Double now. 
+ To do this, need to use the Either term with Maybe Double and Maybe Integer
+ And for that to work, subst needs to take in a Integer or Double now as well. 
+ To do this, need to use the Either term with Double and Integer. 
+ Considered making our own datatype to act as either a Integer or a Double but
+ after researching more on Haskell and how Either worked, it made more sense
+ to go with the data type that is already available. 
+-}
 data Expr = Integer Integer
+          | Float Double
           | Var Variable
           | Add Expr Expr
           | Sub Expr Expr
@@ -40,6 +51,7 @@ data Expr = Integer Integer
 -- |Parse an s-expression and convert it into a protoScheme expression.
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
+fromSExpression (S.Real r) = Float r
 fromSExpression (S.List [S.Symbol "+", e1, e2]) =
     Add (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "-", e1, e2]) =
@@ -54,42 +66,106 @@ fromSExpression (S.Symbol s) =
     Var s
 
 test_fromSExpression = do
-    test "fromSExpression 42" (fromSExpression $ S.Integer 42) (Integer 42)
-
     test "fromSExpression Test Variable" (fromSExpression $ S.Symbol "v") (Var "v")
 
-    test "fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
+    test "Integer fromSExpression 42" (fromSExpression $ S.Integer 42) (Integer 42)
+
+    test "Integer fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
      S.Integer 4, S.Integer 10]) (Add (Integer 4) (Integer 10))
 
-    test "fromSExpression Test Sub" (fromSExpression $ S.List [S.Symbol "-",
+    test "Integer fromSExpression Test Sub" (fromSExpression $ S.List [S.Symbol "-",
      S.Integer 4, S.Integer 10]) (Sub (Integer 4) (Integer 10))
 
-    test "fromSExpression Test Mul" (fromSExpression $ S.List [S.Symbol "*",
+    test "Integer fromSExpression Test Mul" (fromSExpression $ S.List [S.Symbol "*",
      S.Integer 4, S.Integer 10]) (Mul (Integer 4) (Integer 10))
 
-    test "fromSExpression Test Div" (fromSExpression $ S.List [S.Symbol "/",
+    test "Integer fromSExpression Test Div" (fromSExpression $ S.List [S.Symbol "/",
      S.Integer 4, S.Integer 10]) (Div (Integer 4) (Integer 10))
 
-    test "fromSExpression Test Nested Operations" (fromSExpression $ S.List [S.Symbol "/",
+    test "Integer fromSExpression Test Nested Operations" (fromSExpression $ S.List [S.Symbol "/",
      S.List [S.Symbol "+", S.Integer 4, S.Integer 10], S.List [S.Symbol "-",
       S.Integer 4, S.Integer 10]]) (Div (Add (Integer 4) (Integer 10))
        (Sub (Integer 4) (Integer 10)))
 
-    test "fromSExpression Test Let  Simple" (fromSExpression $ S.List [S.Symbol "x",
+    test "Integer fromSExpression Test Let  Simple" (fromSExpression $ S.List [S.Symbol "x",
      S.List [S.Symbol "+", S.Integer 10, S.Integer 4], S.List [S.Symbol "+", S.Symbol "x", S.Integer 1]])
      (Let "x" (Add (Integer 10) (Integer 4)) (Add (Var "x") (Integer 1)))
 
-    test "fromSExpression Test Let Complex" (fromSExpression $ S.List [S.Symbol "y",
+    test "Integer fromSExpression Test Let Complex" (fromSExpression $ S.List [S.Symbol "y",
      S.List [S.Symbol "-", S.Integer 20, S.Integer 8], S.List [S.Symbol "x",
       S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
        S.Symbol "x", S.Integer 1]]]) (Let "y" (Sub (Integer 20) (Integer 8))
        (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Integer 1))))
 
+    test "Real fromSExpression 42" (fromSExpression $ S.Real 42.0) (Float 42.0)
+
+    test "Real fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
+     S.Real 4.1, S.Real 10.1]) (Add (Float 4.1) (Float 10.1))
+
+    test "Real fromSExpression Test Sub" (fromSExpression $ S.List [S.Symbol "-",
+     S.Real 4.1, S.Real 10.1]) (Sub (Float 4.1) (Float 10.1))
+
+    test "Real fromSExpression Test Mul" (fromSExpression $ S.List [S.Symbol "*",
+     S.Real 4.1, S.Real 10.1]) (Mul (Float 4.1) (Float 10.1))
+
+    test "Real fromSExpression Test Div" (fromSExpression $ S.List [S.Symbol "/",
+     S.Real 4.1, S.Real 10.1]) (Div (Float 4.1) (Float 10.1))
+
+    test "Real fromSExpression Test Nested Operations" (fromSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
+      S.Real 4.1, S.Real 10.1]]) (Div (Add (Float 4.1) (Float 10.1))
+       (Sub (Float 4.1) (Float 10.1)))
+
+    test "Real fromSExpression Test Let  Simple" (fromSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+     (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))
+
+    test "Real fromSExpression Test Let Complex" (fromSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+       S.Symbol "x", S.Real 1.1]]]) (Let "y" (Sub (Float 20.1) (Float 8.1))
+       (Let "x" (Add (Var "y") (Float 4.1)) (Add (Var "x") (Float 1.1))))
+
+    test "Mixed fromSExpression 42" (fromSExpression $ S.Real 42.0) (Float 42.0)
+
+    test "Mixed fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
+     S.Real 4.1, S.Real 10.1]) (Add (Float 4.1) (Float 10.1))
+
+    test "Mixed fromSExpression Test Sub" (fromSExpression $ S.List [S.Symbol "-",
+     S.Real 4.1, S.Real 10.1]) (Sub (Float 4.1) (Float 10.1))
+
+    test "Mixed fromSExpression Test Mul" (fromSExpression $ S.List [S.Symbol "*",
+     S.Real 4.1, S.Real 10.1]) (Mul (Float 4.1) (Float 10.1))
+
+    test "Mixed fromSExpression Test Div" (fromSExpression $ S.List [S.Symbol "/",
+     S.Real 4.1, S.Real 10.1]) (Div (Float 4.1) (Float 10.1))
+
+    test "Mixed fromSExpression Test Nested Operations" (fromSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
+      S.Real 4.1, S.Real 10.1]]) (Div (Add (Float 4.1) (Float 10.1))
+       (Sub (Float 4.1) (Float 10.1)))
+
+    test "Mixed fromSExpression Test Let  Simple" (fromSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+     (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))
+
+    test "Mixed fromSExpression Test Let Complex" (fromSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+       S.Symbol "x", S.Real 1.1]]]) (Let "y" (Sub (Float 20.1) (Float 8.1))
+       (Let "x" (Add (Var "y") (Float 4.1)) (Add (Var "x") (Float 1.1))))   
 
 
 -- |Convert a protoScheme expression into its s-expression representation
 toSExpression :: Expr -> S.Expr
-toSExpression _ = undefined
+toSExpression (Integer i) = S.Integer i 
+toSExpression (Float f) = S.Real f 
+toSExpression (Var v) = S.Symbol v 
+toSExpression (Add x y) = S.List [S.Symbol "+", toSExpression x, toSExpression y]
+toSExpression (Sub x y) = S.List [S.Symbol "-", toSExpression x, toSExpression y]
+toSExpression (Mul x y) = S.List [S.Symbol "*", toSExpression x, toSExpression y]
+toSExpression (Div x y) = S.List [S.Symbol "/", toSExpression x, toSExpression y]
+toSExpression (Let v x y) = S.List [S.Symbol v, toSExpression x, toSExpression y]
 
 test_toSExpression = do
     test "toSExpression (+ 32 14)"
@@ -97,10 +173,11 @@ test_toSExpression = do
         (S.List [S.Symbol "+", S.Integer 32, S.Integer 14])
 
 -- |Convert an evaluation result into s-expression
-valueToSExpression :: Integer -> S.Expr
-valueToSExpression i = S.Integer i
+valueToSExpression :: Either Double Integer -> S.Expr
+valueToSExpression (Left i) = S.Real i
+valueToSExpression (Right i) = S.Integer i
 
 test_valueToSExpression = do
     test "toSExpression 42"
-        (valueToSExpression 42)
+        (valueToSExpression (Right 42))
         (S.Integer 42)
