@@ -2,10 +2,11 @@
 Module      : Eval
 Description : Semantics of protoScheme
 Copyright   : (c) Ferd, 2020
-                  <add your name(s)>, 2020
+                  Michael Lanotte, 2020
+                  Rachel Johanek, 2020
 Maintainer  : f.vesely@northeastern
-              <email1>
-              <email2>
+              lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
 
 This module provides the evaluator of the protoScheme language.
 
@@ -25,18 +26,49 @@ import qualified SExpression as S
 
 import SimpleTests (test)
 
+-- Function for testing doubles that takes go to the thousandths place. 
+-- Without this, some results were 14.850000000000001
+checkFloatEquality :: Either (Maybe Double) (Maybe Integer) -> Either (Maybe Double) (Maybe Integer) -> Bool 
+checkFloatEquality (Left (Just x)) (Left (Just y)) = if (abs (x - y) < 0.001) 
+                                                             then True 
+                                                             else False
+checkFloatEquality x y = False             
 
-type MaybeInt = Maybe Integer 
-type MaybeFloat = Maybe Double
+-- Tests for the checkFloatEquality function
+test_checkFloatEquality = do 
+    test "checkFloatEquality left nothing with left nothing" False (checkFloatEquality (Left Nothing) (Left Nothing))
+    test "checkFloatEquality left nothing with right nothing" False (checkFloatEquality (Left Nothing) (Right Nothing))
+    test "checkFloatEquality right nothing with left nothing" False (checkFloatEquality (Right Nothing) (Left Nothing))
+    test "checkFloatEquality right nothing with right nothing" False (checkFloatEquality (Right Nothing) (Right Nothing))
+    test "checkFloatEquality int with left nothing" False (checkFloatEquality (Right (Just 1)) (Left Nothing))
+    test "checkFloatEquality right nothing with int" False (checkFloatEquality (Right Nothing) (Right (Just 1)))
+    test "checkFloatEquality int with right nothing" False (checkFloatEquality (Right (Just 1)) (Right Nothing))
+    test "checkFloatEquality left nothing with int" False (checkFloatEquality (Left Nothing) (Right (Just 1)))
+    test "checkFloatEquality int with int" False (checkFloatEquality (Right (Just 1)) (Right (Just 1)))
+    test "checkFloatEquality double with left nothing" False (checkFloatEquality (Left (Just 1.1)) (Left Nothing))
+    test "checkFloatEquality right nothing with double" False (checkFloatEquality (Right Nothing) (Left (Just 1.1)))
+    test "checkFloatEquality double with right nothing" False (checkFloatEquality (Left (Just 1.1)) (Right Nothing))
+    test "checkFloatEquality left nothing with double" False (checkFloatEquality (Left Nothing) (Left (Just 1.1)))
+    test "checkFloatEquality double with int" False (checkFloatEquality (Left (Just 1.1)) (Right (Just 1)))
+    test "checkFloatEquality int with double" False (checkFloatEquality (Right (Just 1)) (Left (Just 1.1)))
+    test "checkFloatEquality double with double should not be equal 1" False (checkFloatEquality (Left (Just 12.1)) (Left (Just 12.101000001)))
+    test "checkFloatEquality double with double should not be equal 2" False (checkFloatEquality (Left (Just 12.1)) (Left (Just 8.0)))
+    test "checkFloatEquality double with double should be equal 1" True (checkFloatEquality (Left (Just 12.1)) (Left (Just 12.100000001)))
+    test "checkFloatEquality double with double should be equal 2" True (checkFloatEquality (Left (Just 12.1)) (Left (Just 12.1)))
+ 
 
 -- |Evaluates the given expression to a value.
 {- Changed type signuture to handle either an Integer or a Double
    Decided to use Either to return both. 
    For consistency, made both the left and right of the either be a "Maybe" type 
-   even though we only return Left Nothings. Could potentially update further
-   to have Right Nothing if all of the parts were integers and then if there is a Nothing
-   along with at least one double then it would be a Left Nothing. But for now we did not
-   deem that necessary.      
+     even though we only return Left Nothings. Could potentially update further
+       to have Right Nothing if all of the parts were integers and then if there is a Nothing
+         along with at least one double then it would be a Left Nothing. But for now we did not
+           deem that necessary.      
+   For each of the Add, Sub, Mul, and Div cases in eval, first see if the eval 1 is an 
+        Double or an Integer or Nothing, and then if needed check the e2. 
+             If both are integer than return Right, if both are Doubles than return Left
+                  If one is a double then return double, if either are Nothing then return nothing.                
 -}
 eval :: Expr -> Either (Maybe Double) (Maybe Integer)
 eval (Integer i) = Right (Just i)
@@ -127,47 +159,47 @@ test_eval = do
 
     -- // Float tests 
 
-    test "Float eval: (+ 12.2 30.5)" (eval (Add (Float 12.2) (Float 30.5))) (Left (Just 42.7))
+    test "Float eval: (+ 12.2 30.5)" True (checkFloatEquality (eval (Add (Float 12.2) (Float 30.5))) (Left (Just 42.7)))
 
     test "Float eval: (let (x (+1.1 2.2)) (* 4.5 x))"
-       (eval $ Let "x" (Add (Float 1.1) (Float 2.2)) (Mul (Float 4.5) (Var "x")))
-       (Left (Just 14.850000000000001))
+       True 
+       (checkFloatEquality(eval $ Let "x" (Add (Float 1.1) (Float 2.2)) (Mul (Float 4.5) (Var "x"))) (Left (Just 14.85)))
 
     test "Float eval not assigned Var Test" (eval $ Add (Float 2.5) (Var "x")) (Left Nothing)
 
-    test "Float eval: simple Integer test" (eval $ Float 11.1) (Left (Just 11.1))
+    test "Float eval: simple Integer test" True (checkFloatEquality (eval $ Float 11.1) (Left (Just 11.1)))
 
-    test "Float eval: (- 30.5 12.5)" (eval $ Sub (Float 30.5) (Float 12.5)) (Left (Just 18.0))
+    test "Float eval: (- 30.5 12.5)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Float 12.5)) (Left (Just 18.0)))
 
-    test "Float eval: (* 30.5 12.1)" (eval $ Mul (Float 30.5) (Float 12.1)) (Left (Just 369.05))
+    test "Float eval: (* 30.5 12.1)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Float 12.1)) (Left (Just 369.05)))
 
-    test "Float eval: (/ 30.0 12.0)" (eval $ Div (Float 30.0) (Float 12.0)) (Left (Just 2.5))
+    test "Float eval: (/ 30.0 12.0)" True (checkFloatEquality (eval $ Div (Float 30.0) (Float 12.0)) (Left (Just 2.5)))
 
-    test "Float eval: (* (+ 5.5 10.5) (- 5.4 4.4))" (eval $ Mul (Add (Float 5.5) (Float 10.5))
-     (Sub (Float 5.4) (Float 4.4))) (Left (Just 16.0))
+    test "Float eval: (* (+ 5.5 10.5) (- 5.4 4.4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Float 10.5))
+     (Sub (Float 5.4) (Float 4.4))) (Left (Just 16.0)))
 
-    test "Float eval: nested let" (eval $ Let "y" (Sub (Float 20.2) (Float 8.4))
-     (Let "x" (Add (Var "y") (Float 4.4)) (Add (Var "x") (Float 1.1)))) (Left (Just 17.3))
+    test "Float eval: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Float 8.4))
+     (Let "x" (Add (Var "y") (Float 4.4)) (Add (Var "x") (Float 1.1)))) (Left (Just 17.3)))
 
     -- // Mixed tests 
 
-    test "Mixed eval: (+ 12.2 30)" (eval (Add (Float 12.2) (Integer 30))) (Left (Just 42.2))
+    test "Mixed eval: (+ 12.2 30)" True (checkFloatEquality (eval (Add (Float 12.2) (Integer 30))) (Left (Just 42.2)))
 
-    test "Mixed eval: (let (x (+1.1 20)) (* 4.5 x))"
-       (eval $ Let "x" (Add (Float 1.1) (Integer 20)) (Mul (Integer 4) (Var "x")))
-       (Left (Just 84.4))
+    test "Mixed eval: (let (x (+1.1 20)) (* 4.5 x))" True
+       (checkFloatEquality (eval $ Let "x" (Add (Float 1.1) (Integer 20)) (Mul (Integer 4) (Var "x")))
+       (Left (Just 84.4)))
 
-    test "Mixed eval: (- 30.5 12)" (eval $ Sub (Float 30.5) (Integer 12)) (Left (Just 18.5))
+    test "Mixed eval: (- 30.5 12)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Integer 12)) (Left (Just 18.5)))
 
-    test "Mixed eval: (* 30.5 12)" (eval $ Mul (Float 30.5) (Integer 12)) (Left (Just 366.0))
+    test "Mixed eval: (* 30.5 12)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Integer 12)) (Left (Just 366.0)))
 
-    test "Mixed eval: (/ 32.5 10)" (eval $ Div (Float 32.5) (Float 10)) (Left (Just 3.25))
+    test "Mixed eval: (/ 32.5 10)" True (checkFloatEquality (eval $ Div (Float 32.5) (Float 10)) (Left (Just 3.25)))
 
-    test "Mixed eval: (* (+ 5.5 10) (- 5.4 4))" (eval $ Mul (Add (Float 5.5) (Integer 10))
-     (Sub (Integer 5) (Float 4.4))) (Left (Just 9.299999999999994))
+    test "Mixed eval: (* (+ 5.5 10) (- 5.4 4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Integer 10))
+     (Sub (Integer 5) (Float 4.4))) (Left (Just 9.299999999999994)))
 
-    test "Mixed eval: nested let" (eval $ Let "y" (Sub (Float 20.2) (Integer 8))
-     (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Float 1.1)))) (Left (Just 17.3))
+    test "Mixed eval: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Integer 8))
+     (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Float 1.1)))) (Left (Just 17.3)))
 
 
 

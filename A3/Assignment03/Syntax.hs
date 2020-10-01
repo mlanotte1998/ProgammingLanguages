@@ -2,10 +2,11 @@
 Module      : Syntax
 Description : Abstract syntax of protoScheme
 Copyright   : (c) Ferd, 2020
-                  <add your name(s)>, 2020
+                  Michael Lanotte, 2020
+                  Rachel Johanek, 2020
 Maintainer  : f.vesely@northeastern
-              <email1>
-              <email2>
+              lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
 
 This module defines the abstract syntax of protoScheme and related functions.
 -}
@@ -49,6 +50,8 @@ data Expr = Integer Integer
           deriving (Eq, Show)
 
 -- |Parse an s-expression and convert it into a protoScheme expression.
+-- Need to have the S.Symbol x last to account for where there should be let because
+-- pattern matching tells us that that symbol is not one of the four operation symbols. 
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
 fromSExpression (S.Real r) = Float r
@@ -230,6 +233,7 @@ test_toSExpression = do
         (toSExpression $ Add (Mul (Float 10.2) (Float 10.8)) (Sub (Float 5.7) (Float 2.1)))
         (S.List [S.Symbol "+", (S.List [S.Symbol "*", S.Real 10.2, S.Real 10.8]),
           (S.List [S.Symbol "-", S.Real 5.7, S.Real 2.1])])
+
 
 -- |Convert an evaluation result into s-expression
 valueToSExpression :: Either Double Integer -> S.Expr
