@@ -168,9 +168,68 @@ toSExpression (Div x y) = S.List [S.Symbol "/", toSExpression x, toSExpression y
 toSExpression (Let v x y) = S.List [S.Symbol v, toSExpression x, toSExpression y]
 
 test_toSExpression = do
+    --Base cases
+    test "toSExpression (10)" (toSExpression (Integer 10)) (S.Integer 10)
+    test "toSExpression (10.1)" (toSExpression (Float 10.1)) (S.Real 10.1)
+    test "toSExpression (Var x)" (toSExpression (Var "x")) (S.Symbol "x")
+
+    --Addition with Integers and Reals
     test "toSExpression (+ 32 14)"
         (toSExpression $ Add (Integer 32) (Integer 14))
         (S.List [S.Symbol "+", S.Integer 32, S.Integer 14])
+    test "toSExpression (+ 32.1 14)"
+        (toSExpression $ Add (Float 32.1) (Integer 14))
+        (S.List [S.Symbol "+", S.Real 32.1, S.Integer 14])
+    test "toSExpression (+ 32.1 14.5)"
+        (toSExpression $ Add (Float 32.1) (Float 14.5))
+        (S.List [S.Symbol "+", S.Real 32.1, S.Real 14.5])
+
+    --Subtraction with Integers and Reals
+    test "toSExpression (- 32 14)"
+        (toSExpression $ Sub (Integer 32) (Integer 14))
+        (S.List [S.Symbol "-", S.Integer 32, S.Integer 14])
+    test "toSExpression (- 32.1 14)"
+        (toSExpression $ Sub (Float 32.1) (Integer 14))
+        (S.List [S.Symbol "-", S.Real 32.1, S.Integer 14])
+    test "toSExpression (- 32.1 14.5)"
+        (toSExpression $ Sub (Float 32.1) (Float 14.5))
+        (S.List [S.Symbol "-", S.Real 32.1, S.Real 14.5])
+    
+    --Multiplication with Integers and Reals
+    test "toSExpression (* 10 5)"
+        (toSExpression $ Mul (Integer 10) (Integer 5))
+        (S.List [S.Symbol "*", S.Integer 10, S.Integer 5])
+    test "toSExpression (* 10.2 5)"
+        (toSExpression $ Mul (Float 10.2) (Integer 5))
+        (S.List [S.Symbol "*", S.Real 10.2, S.Integer 5])
+    test "toSExpression (* 10.2 5.6)"
+        (toSExpression $ Mul (Float 10.2) (Float 5.6))
+        (S.List [S.Symbol "*", S.Real 10.2, S.Real 5.6])
+
+    --Division with Integers and Reals
+    test "toSExpression (/ 10 5)"
+        (toSExpression $ Div (Integer 10) (Integer 5))
+        (S.List [S.Symbol "/", S.Integer 10, S.Integer 5])
+    test "toSExpression (/ 10.2 5)"
+        (toSExpression $ Div (Float 10.2) (Integer 5))
+        (S.List [S.Symbol "/", S.Real 10.2, S.Integer 5])
+    test "toSExpression (/ 10.2 5.6)"
+        (toSExpression $ Div (Float 10.2) (Float 5.6))
+        (S.List [S.Symbol "/", S.Real 10.2, S.Real 5.6])
+
+    --Nested functions with Integers and Reals
+    test "toSExpression (/ (+ 10 10) (* 5 2)"
+        (toSExpression (Div (Add (Integer 10) (Integer 10)) (Mul (Integer 5) (Integer 2))))
+        (S.List [S.Symbol "/", (S.List [S.Symbol "+", S.Integer 10, S.Integer 10]),
+          (S.List [S.Symbol "*", S.Integer 5, S.Integer 2])])
+    test "toSExpression (/ (+ 10.2 10) (- 5 2.1)"
+        (toSExpression $ Div (Add (Float 10.2) (Integer 10)) (Sub (Integer 5) (Float 2.1)))
+        (S.List [S.Symbol "/", (S.List [S.Symbol "+", S.Real 10.2, S.Integer 10]),
+          (S.List [S.Symbol "-", S.Integer 5, S.Real 2.1])])
+    test "toSExpression (+ (* 10.2 10.8) (- 5.7 2.1)"
+        (toSExpression $ Add (Mul (Float 10.2) (Float 10.8)) (Sub (Float 5.7) (Float 2.1)))
+        (S.List [S.Symbol "+", (S.List [S.Symbol "*", S.Real 10.2, S.Real 10.8]),
+          (S.List [S.Symbol "-", S.Real 5.7, S.Real 2.1])])
 
 -- |Convert an evaluation result into s-expression
 valueToSExpression :: Either Double Integer -> S.Expr
@@ -181,3 +240,12 @@ test_valueToSExpression = do
     test "toSExpression 42"
         (valueToSExpression (Right 42))
         (S.Integer 42)
+    test "toSExpression 42.3"
+        (valueToSExpression (Left 42.3))
+        (S.Real 42.3)
+    test "toSExpression 20"
+        (valueToSExpression (Right 20))
+        (S.Integer 20)
+    test "toSExpression 51.9"
+        (valueToSExpression (Left 51.9))
+        (S.Real 51.9)

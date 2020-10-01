@@ -116,7 +116,7 @@ test_eval = do
     test "Integer eval: (- 30 12)" (eval $ Sub (Integer 30) (Integer 12)) (Right (Just 18))
 
     test "Integer eval: (* 30 12)" (eval $ Mul (Integer 30) (Integer 12)) (Right (Just 360))
-
+  
     test "Integer eval: (/ 30 12)" (eval $ Div (Integer 30) (Integer 12)) (Right (Just 2))
 
     test "Integer eval: (* (+ 5 10) (- 5 4))" (eval $ Mul (Add (Integer 5) (Integer 10))
@@ -192,6 +192,7 @@ subst x v (Let y e1 e2) | x == y = Let y (subst x v e1) e2
 
 
 test_subst = do
+   -- // Integer tests
     test "subst x 42 x" (subst "x" (Right 42) (Var "x")) (Integer 42)
 
     test "subst x 42 y" (subst "x" (Right 42) (Var "y")) (Var "y")
@@ -282,19 +283,109 @@ test_subst = do
      (Let "y" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Float 10.5) (Integer 6)) (Sub (Float 10.5) (Integer 16)))
 
-{-
+
 
 -- |Run the given protoScheme s-expression, returning an s-expression
 -- representation of the result.
 runSExpression :: S.Expr -> Maybe S.Expr
 runSExpression se =
     case eval (fromSExpression se) of
-         Just v -> Just (valueToSExpression v)
-         Nothing -> Nothing
+         Left (Just v)-> Just (valueToSExpression (Left v))
+         Right (Just v)-> Just (valueToSExpression (Right v))
+         Right Nothing -> Nothing
+         Left Nothing -> Nothing
 
 test_runSExpression = do
+
     test "run: (+ 1 2)"
         (runSExpression $ S.List [S.Symbol "+", S.Integer 1, S.Integer 2])
         (Just $ S.Integer 3)
 
-        -}
+    test "runSExpression Test Variable" (runSExpression $ S.Symbol "v") (Nothing)
+
+    test "Integer runSExpression 42" (runSExpression $ S.Integer 42) (Just (S.Integer 42))
+
+    test "Integer runSExpression Test Add" (runSExpression $ S.List [S.Symbol "+",
+     S.Integer 4, S.Integer 10]) (Just $ S.Integer 14)
+
+    test "Integer runSExpression Test Sub" (runSExpression $ S.List [S.Symbol "-",
+     S.Integer 4, S.Integer 10]) (Just $ S.Integer (-6))
+
+    test "Integer runSExpression Test Mul" (runSExpression $ S.List [S.Symbol "*",
+     S.Integer 4, S.Integer 10]) (Just $ S.Integer 40)
+
+    test "Integer runSExpression Test Div" (runSExpression $ S.List [S.Symbol "/",
+     S.Integer 4, S.Integer 10]) (Just $ S.Integer 0)
+
+    test "Integer runSExpression Test Nested Operations" (runSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Integer 4, S.Integer 10], S.List [S.Symbol "-",
+      S.Integer 10, S.Integer 6]]) 
+     (Just $ S.Integer 3)
+
+    test "Integer runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Integer 10, S.Integer 4], S.List [S.Symbol "+", S.Symbol "x", S.Integer 1]])
+     (Just $ S.Integer 15)
+
+    test "Integer runExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Integer 8], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
+       S.Symbol "x", S.Integer 1]]])
+       (Just $ S.Integer 17)
+
+    test "Real runSExpression 42" (runSExpression $ S.Real 42.0) (Just $ S.Real 42.0)
+
+    test "Real runSExpression Test Add" (runSExpression $ S.List [S.Symbol "+",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 14.2)
+
+    test "Real runSExpression Test Sub" (runSExpression $ S.List [S.Symbol "-",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real (-6.0))
+
+    test "Real runSExpression Test Mul" (runSExpression $ S.List [S.Symbol "*",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 41.41)
+
+    test "Real runSExpression Test Div" (runSExpression $ S.List [S.Symbol "/",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 0.4059405940594059)
+
+    test "Real runSExpression Test Nested Operations" (runSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
+      S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.3666666666666667))
+
+    test "Real runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+     (Just $ S.Real 15.299999999999999)
+
+    test "Real runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+       S.Symbol "x", S.Real 1.1]]])
+     (Just $ S.Real 17.200000000000003) 
+
+    test "Mixed runSExpression 42" (runSExpression $ S.Real 42.0) (Just $ S.Real 42.0)
+
+    test "Mixed runSExpression Test Add" (runSExpression $ S.List [S.Symbol "+",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 14.2)
+
+    test "Mixed runSExpression Test Sub" (runSExpression $ S.List [S.Symbol "-",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real (-6))
+
+    test "Mixed runSExpression Test Mul" (runSExpression $ S.List [S.Symbol "*",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 41.41)
+
+    test "Mixed runSExpression Test Div" (runSExpression $ S.List [S.Symbol "/",
+     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 0.4059405940594059)
+
+    test "Mixed runSExpression Test Nested Operations" (runSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
+      S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.3666666666666667))
+
+    test "Mixed runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+     (Just $ S.Real 15.299999999999999)
+
+    test "Mixed runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+       S.Symbol "x", S.Real 1.1]]])
+     (Just $ S.Real 17.200000000000003)   
+
+        
