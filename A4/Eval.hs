@@ -202,7 +202,8 @@ test_eval = do
 -- Given value can now be either a double or an integer 
 subst :: Variable -> (Either Double Integer) -> Expr -> Expr
 subst _ _ (Integer n) = Integer n
-subst _ _ (Float n) = Float n
+subst _ _ (Float f) = Float f
+subst _ _ (Boolean b) = Boolean b
 subst x v (Var y) | x == y = 
                       case v of 
                            Left num -> Float num 

@@ -19,6 +19,18 @@ import SimpleTests (test)
 -- |Variables are just strings
 type Variable = String
 
+{-
+<Expr> ::= <Integer>
+         | <Float>
+         | <Boolean> 
+         | <Variable>
+         | (+ <Expr> <Expr>)
+         | (- <Expr> <Expr>)
+         | (* <Expr> <Expr>)
+         | (/ <Expr> <Expr>)
+         | (let (<Variable> <Expr>) <Expr>)
+-}
+
 -- |protoScheme expressions
 {- 
  Only need to add a Float pattern of type double into the protoScheme syntax. 
@@ -30,8 +42,13 @@ type Variable = String
  after researching more on Haskell and how Either worked, it made more sense
  to go with the data type that is already available. 
 -}
+{-
+  For Assignment 4: 
+  Added Boolean Bool line for part 1. 
+-}
 data Expr = Integer Integer
           | Float Double
+          | Boolean Bool
           | Var Variable
           | Add Expr Expr
           | Sub Expr Expr
@@ -43,8 +60,13 @@ data Expr = Integer Integer
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
 -- pattern matching tells us that that symbol is not one of the four operation symbols. 
+{-
+  For Assignment 4:
+  Added S.Boolean case 
+-}
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
+fromSExpression (S.Boolean b) = Boolean b
 fromSExpression (S.Real r) = Float r
 fromSExpression (S.List [S.Symbol "+", e1, e2]) =
     Add (fromSExpression e1) (fromSExpression e2)
@@ -60,7 +82,39 @@ fromSExpression (S.Symbol s) =
     Var s
 
 test_fromSExpression = do
+    
     test "fromSExpression Test Variable" (fromSExpression $ S.Symbol "v") (Var "v")
+    
+    test "Boolean fromSExpression t" (fromSExpression $ S.Boolean True) (Boolean True)
+
+    test "Boolean fromSExpression f" (fromSExpression $ S.Boolean False ) (Boolean False)
+
+    test "Boolean fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
+     S.Integer 4, S.Boolean True]) (Add (Integer 4) (Boolean True))
+
+    test "Boolean fromSExpression Test Sub" (fromSExpression $ S.List [S.Symbol "-",
+     S.Integer 4, S.Boolean False]) (Sub (Integer 4) (Boolean False))
+
+    test "Boolean fromSExpression Test Mul" (fromSExpression $ S.List [S.Symbol "*",
+     S.Integer 4, S.Boolean True]) (Mul (Integer 4) (Boolean True))
+
+    test "Boolean fromSExpression Test Div" (fromSExpression $ S.List [S.Symbol "/",
+     S.Integer 4, S.Boolean False]) (Div (Integer 4) (Boolean False))
+
+    test "Boolean fromSExpression Test Nested Operations" (fromSExpression $ S.List [S.Symbol "/",
+     S.List [S.Symbol "+", S.Integer 4, S.Boolean False], S.List [S.Symbol "-",
+      S.Integer 4, S.Integer 10]]) (Div (Add (Integer 4) (Boolean False))
+       (Sub (Integer 4) (Integer 10)))
+
+    test "Boolean fromSExpression Test Let  Simple" (fromSExpression $ S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Integer 10, S.Integer 4], S.List [S.Symbol "+", S.Symbol "x", S.Boolean True]])
+     (Let "x" (Add (Integer 10) (Integer 4)) (Add (Var "x") (Boolean True)))
+
+    test "Boolean fromSExpression Test Let Complex" (fromSExpression $ S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Boolean True], S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
+       S.Symbol "x", S.Integer 1]]]) (Let "y" (Sub (Integer 20) (Boolean True))
+       (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Integer 1))))
 
     test "Integer fromSExpression 42" (fromSExpression $ S.Integer 42) (Integer 42)
 
@@ -153,6 +207,7 @@ test_fromSExpression = do
 -- |Convert a protoScheme expression into its s-expression representation
 toSExpression :: Expr -> S.Expr
 toSExpression (Integer i) = S.Integer i 
+toSExpression (Boolean b) = S.Boolean b
 toSExpression (Float f) = S.Real f 
 toSExpression (Var v) = S.Symbol v 
 toSExpression (Add x y) = S.List [S.Symbol "+", toSExpression x, toSExpression y]
@@ -162,10 +217,32 @@ toSExpression (Div x y) = S.List [S.Symbol "/", toSExpression x, toSExpression y
 toSExpression (Let v x y) = S.List [S.Symbol v, toSExpression x, toSExpression y]
 
 test_toSExpression = do
+    test "toSExpression true" (toSExpression (Boolean True)) (S.Boolean True)
+    test "toSExpression false" (toSExpression (Boolean False)) (S.Boolean False)
+    test "toSExpression (Var x)" (toSExpression (Var "x")) (S.Symbol "x")
+
     --Base cases
     test "toSExpression (10)" (toSExpression (Integer 10)) (S.Integer 10)
     test "toSExpression (10.1)" (toSExpression (Float 10.1)) (S.Real 10.1)
     test "toSExpression (Var x)" (toSExpression (Var "x")) (S.Symbol "x")
+
+    -- Basic Boolean tests
+    test "toSExpression (+ True 14)"
+        (toSExpression $ Add (Boolean True) (Integer 14))
+        (S.List [S.Symbol "+", (S.Boolean True), (S.Integer 14)])
+    test "toSExpression (- 32.1 False)"
+        (toSExpression $ Sub (Float 32.1) (Boolean False))
+        (S.List [S.Symbol "-", S.Real 32.1, S.Boolean False])
+    test "toSExpression (* 10.2 True)"
+        (toSExpression $ Mul (Float 10.2) (Boolean True))
+        (S.List [S.Symbol "*", S.Real 10.2, S.Boolean True])
+    test "toSExpression (/ False 5.6)"
+        (toSExpression $ Div (Boolean False) (Float 5.6))
+        (S.List [S.Symbol "/", S.Boolean False, S.Real 5.6])
+    test "toSExpression (+ (* 10.2 False) (- True 2.1)"
+        (toSExpression $ Add (Mul (Float 10.2) (Boolean False)) (Sub (Boolean True) (Float 2.1)))
+        (S.List [S.Symbol "+", (S.List [S.Symbol "*", S.Real 10.2, S.Boolean False]),
+          (S.List [S.Symbol "-", S.Boolean True, S.Real 2.1])])
 
     --Addition with Integers and Reals
     test "toSExpression (+ 32 14)"
@@ -199,6 +276,9 @@ test_toSExpression = do
     test "toSExpression (* 10.2 5.6)"
         (toSExpression $ Mul (Float 10.2) (Float 5.6))
         (S.List [S.Symbol "*", S.Real 10.2, S.Real 5.6])
+    test "toSExpression (/ 10.2 5.6)"
+        (toSExpression $ Div (Float 10.2) (Float 5.6))
+        (S.List [S.Symbol "/", S.Real 10.2, S.Real 5.6])
 
     --Division with Integers and Reals
     test "toSExpression (/ 10 5)"
