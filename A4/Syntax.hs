@@ -38,6 +38,9 @@ type Variable = String
          | (/ <Expr> <Expr>)
          | (let (<Variable> <Expr>) <Expr>)
          | (if <Expr> <Expr> <Expr>)
+         | (and <Expr> <Expr>)
+         | (or <Expr> <Expr>)
+         | (not <Expr>)    
 -}
 
 -- |protoScheme expressions
@@ -54,6 +57,8 @@ type Variable = String
 {-
   For Assignment 4: 
   Added Boolean Bool line for part 1. 
+  Added If line for part 2
+  Added And, Or, and Not for part 3
 -}
 data Expr = Integer Integer
           | Float Double
@@ -65,6 +70,9 @@ data Expr = Integer Integer
           | Div Expr Expr
           | Let Variable Expr Expr
           | If Expr Expr Expr 
+          | And Expr Expr 
+          | Or Expr Expr
+          | Not Expr
           deriving (Eq, Show)
 
 -- |Parse an s-expression and convert it into a protoScheme expression.
@@ -72,12 +80,15 @@ data Expr = Integer Integer
 -- pattern matching tells us that that symbol is not one of the four operation symbols. 
 {-
   For Assignment 4:
-  Added S.Boolean case 
+  Added S.Boolean case for part 1
+  Added If case for part 2
+  Added And, Or, and Not cases for part 3
 -}
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
 fromSExpression (S.Boolean b) = Boolean b
 fromSExpression (S.Real r) = Float r
+fromSExpression (S.Symbol s) = Var s
 fromSExpression (S.List [S.Symbol "+", e1, e2]) =
     Add (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "-", e1, e2]) =
@@ -90,12 +101,19 @@ fromSExpression (S.List [S.Symbol "Let", S.Symbol x, e1, e2]) =
     Let x (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "If", e1, e2, e3]) =
     If (fromSExpression e1) (fromSExpression e2) (fromSExpression e3) 
-fromSExpression (S.Symbol s) =
-    Var s
+fromSExpression (S.List [S.Symbol "And", e1, e2]) = 
+    And (fromSExpression e1) (fromSExpression e2) 
+fromSExpression (S.List [S.Symbol "Or", e1, e2]) = 
+    Or (fromSExpression e1) (fromSExpression e2)   
+fromSExpression (S.List [S.Symbol "Not", e]) = 
+    Not (fromSExpression e)        
+
 
 test_fromSExpression = do
     
     test "fromSExpression Test Variable" (fromSExpression $ S.Symbol "v") (Var "v")
+
+    -- Boolean tests
     
     test "Boolean fromSExpression t" (fromSExpression $ S.Boolean True) (Boolean True)
 
@@ -128,6 +146,8 @@ test_fromSExpression = do
        S.Symbol "x", S.Integer 1]]]) (Let "y" (Sub (Integer 20) (Boolean True))
        (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Integer 1))))
 
+    -- Integer tests   
+
     test "Integer fromSExpression 42" (fromSExpression $ S.Integer 42) (Integer 42)
 
     test "Integer fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
@@ -156,6 +176,8 @@ test_fromSExpression = do
       S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
        S.Symbol "x", S.Integer 1]]]) (Let "y" (Sub (Integer 20) (Integer 8))
        (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Integer 1))))
+
+    -- Real tests   
 
     test "Real fromSExpression 42" (fromSExpression $ S.Real 42.0) (Float 42.0)
 
@@ -187,6 +209,8 @@ test_fromSExpression = do
        (Let "y" (Sub (Float 20.1) (Float 8.1))
        (Let "x" (Add (Var "y") (Float 4.1)) (Add (Var "x") (Float 1.1))))
 
+    -- Mixed integer and real tests   
+
     test "Mixed fromSExpression 42" (fromSExpression $ S.Real 42.0) (Float 42.0)
 
     test "Mixed fromSExpression Test Add" (fromSExpression $ S.List [S.Symbol "+",
@@ -216,6 +240,82 @@ test_fromSExpression = do
        S.Symbol "x", S.Real 1.1]]]) (Let "y" (Sub (Float 20.1) (Float 8.1))
        (Let "x" (Add (Var "y") (Float 4.1)) (Add (Var "x") (Float 1.1))))   
 
+   -- If tests
+    test "If fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "If" , S.Boolean True, S.Integer 10, S.Real 15.1]) 
+          (If (Boolean True) (Integer 10) (Float 15.1))   
+
+    test "If fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "If" , S.Boolean False, S.Integer 10, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (If (Boolean False) (Integer 10) (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "If fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "If" , S.Boolean False, S.List [S.Symbol "If" , S.Boolean True, S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (If (Boolean False) (If (Boolean True) (Integer 10) (Float 15.1))
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))   
+
+    -- And tests
+    test "And fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "And" , S.Boolean True, S.Integer 10]) 
+          (And (Boolean True) (Integer 10))   
+
+    test "And fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "And" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (And (Boolean False) (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "And fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "And" , S.List [S.Symbol "And" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (And (And (Integer 10) (Float 15.1))
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))    
+
+    -- Or tests
+    test "Or fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.Boolean True, S.Integer 10]) 
+          (Or (Boolean True) (Integer 10))   
+
+    test "Or fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Or (Boolean False) (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "Or fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.List [S.Symbol "Or" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Or (Or (Integer 10) (Float 15.1))
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))    
+
+    -- Not tests
+    test "Not fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.Boolean True]) 
+          (Not (Boolean True))   
+
+    test "Not fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Not (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "Not fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.List [S.Symbol "Or" , S.Integer 10, 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
+            (Not (Or (Integer 10)
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))))                                  
+
+-- ================================================================================================
+
+{-
+  For Assignment 4:
+  Added S.Boolean case for part 1
+  Added If case for part 2
+  Added And, Or, and Not cases for part 3
+-}
 
 -- |Convert a protoScheme expression into its s-expression representation
 toSExpression :: Expr -> S.Expr
@@ -229,6 +329,9 @@ toSExpression (Mul x y) = S.List [S.Symbol "*", toSExpression x, toSExpression y
 toSExpression (Div x y) = S.List [S.Symbol "/", toSExpression x, toSExpression y]
 toSExpression (Let v x y) = S.List [S.Symbol "Let", S.Symbol v, toSExpression x, toSExpression y]
 toSExpression (If x y z) = S.List [S.Symbol "If", toSExpression x, toSExpression y, toSExpression z]
+toSExpression (And x y) = S.List [S.Symbol "And", toSExpression x, toSExpression y]
+toSExpression (Or x y) = S.List [S.Symbol "Or", toSExpression x, toSExpression y]
+toSExpression (Not x) = S.List [S.Symbol "Not", toSExpression x]
 
 test_toSExpression = do
     test "toSExpression true" (toSExpression (Boolean True)) (S.Boolean True)
@@ -341,7 +444,53 @@ test_toSExpression = do
         (S.List [S.Symbol "If", S.Boolean True, S.List [S.Symbol "+", S.Integer 1, S.Real 2.0], S.Symbol "x"])    
     test "toSExpression if complex 2" 
         (toSExpression (If (Boolean False) (Let "y" (Integer 1) (Var "y")) (Div (Integer 10) (Integer 2))))
-        (S.List [S.Symbol "If", S.Boolean False, S.List [S.Symbol "Let", S.Symbol "y" , S.Integer 1, S.Symbol "y"], S.List [S.Symbol "/", S.Integer 10, S.Integer 2]])       
+        (S.List [S.Symbol "If", S.Boolean False, S.List [S.Symbol "Let", S.Symbol "y" , S.Integer 1, S.Symbol "y"], S.List [S.Symbol "/", S.Integer 10, S.Integer 2]])   
+
+    -- And tests
+    test "toSExpression And Test 1" (toSExpression $ (And (Boolean True) (Integer 10)))
+      (S.List [S.Symbol "And" , S.Boolean True, S.Integer 10]) 
+          
+    test "toSExpression And Test 2" (toSExpression $ And (Boolean False) 
+      (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))
+        (S.List [S.Symbol "And" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]])
+                 
+    test "toSExpression And Test 3" (toSExpression $ (And (And (Integer 10) (Float 15.1))
+      (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))) 
+         (S.List [S.Symbol "And" , S.List [S.Symbol "And" , S.Integer 10, S.Real 15.1], 
+          S.List [S.Symbol "Let", S.Symbol "x", S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], 
+           S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            
+
+    -- Or tests
+    test "toSExpression Or Test 1" (toSExpression $ (Or (Boolean True) (Integer 10)))
+      (S.List [S.Symbol "Or" , S.Boolean True, S.Integer 10]) 
+          
+    test "toSExpression Or Test 2" (toSExpression $ Or (Boolean False) 
+      (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))
+        (S.List [S.Symbol "Or" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]])
+                 
+    test "toSExpression Or Test 3" (toSExpression $ (Or (Or (Integer 10) (Float 15.1))
+      (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))) 
+         (S.List [S.Symbol "Or" , S.List [S.Symbol "Or" , S.Integer 10, S.Real 15.1], 
+          S.List [S.Symbol "Let", S.Symbol "x", S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], 
+           S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]])    
+
+    -- Not tests
+    test "toSExpression Not Test 1" (toSExpression $ (Not (Boolean True))) 
+      (S.List [S.Symbol "Not" , S.Boolean True]) 
+
+    test "toSExpression Not Test 2" (toSExpression $  (Not (Let "x" (Add (Float 10.1) (Float 4.1)) 
+      (Add (Var "x") (Float 1.1))))) (S.List [S.Symbol "Not" , S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+                 
+
+    test "toSExpression Not Test 3" (toSExpression $ (Not (Or (Integer 10)
+       (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))))     
+         (S.List [S.Symbol "Not" , S.List [S.Symbol "Or" , S.Integer 10, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
+                  
 
 
 -- |Convert an evaluation result into s-expression

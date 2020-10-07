@@ -19,8 +19,10 @@ import qualified SExpression as S
 
 import SimpleTests (test)
 
+-- ======================================================================================================
+
 -- Function for testing doubles that takes go to the thousandths place. 
--- Without this, some results were 14.850000000000001
+-- Without this, some results were for example 14.850000000000001
 checkFloatEquality :: Maybe ExprEval -> Maybe ExprEval -> Bool 
 checkFloatEquality (Just (Eval_Float x)) (Just (Eval_Float y)) = if (abs (x - y) < 0.001) 
                                                              then True 
@@ -37,27 +39,26 @@ test_checkFloatEquality = do
     test "checkFloatEquality nothing with float" False (checkFloatEquality Nothing (Just (Eval_Float 1.1)))
     test "checkFloatEquality float with int" False (checkFloatEquality (Just (Eval_Float 1.1)) (Just (Eval_Integer 1)))
     test "checkFloatEquality int with float" False (checkFloatEquality (Just (Eval_Integer 1)) (Just (Eval_Float 1.1)))
-    test "checkFloatEquality float with float should not be equal 1" False (checkFloatEquality (Just (Eval_Float 12.1)) (Just (Eval_Float 12.101000001)))
-    test "checkFloatEquality float with float should not be equal 2" False (checkFloatEquality (Just (Eval_Float 12.1)) (Just (Eval_Float 8.0)))
-    test "checkFloatEquality float with float should be equal 1" True (checkFloatEquality (Just (Eval_Float 12.1)) (Just (Eval_Float 12.100000001)))
-    test "checkFloatEquality float with float should be equal 2" True (checkFloatEquality (Just (Eval_Float 12.1)) (Just (Eval_Float 12.1)))
+    test "checkFloatEquality float with float should not be equal 1" False (checkFloatEquality (Just (Eval_Float 12.1)) 
+     (Just (Eval_Float 12.101000001)))
+    test "checkFloatEquality float with float should not be equal 2" False (checkFloatEquality (Just (Eval_Float 12.1)) 
+     (Just (Eval_Float 8.0)))
+    test "checkFloatEquality float with float should be equal 1" True (checkFloatEquality (Just (Eval_Float 12.1)) 
+     (Just (Eval_Float 12.100000001)))
+    test "checkFloatEquality float with float should be equal 2" True (checkFloatEquality (Just (Eval_Float 12.1)) 
+     (Just (Eval_Float 12.1)))
  
+ -- ===============================================================================================
 
 -- |Evaluates the given expression to a value.
-{- Changed type signuture to handle either an Integer or a Double
-   Decided to use Either to return both. 
-   For consistency, made both the left and right of the either be a "Maybe" type 
-     even though we only return Left Nothings. Could potentially update further
-       to have Right Nothing if all of the parts were integers and then if there is a Nothing
-         along with at least one double then it would be a Left Nothing. But for now we did not
-           deem that necessary.      
-   For each of the Add, Sub, Mul, and Div cases in eval, first see if the eval 1 is an 
-        Double or an Integer or Nothing, and then if needed check the e2. 
-             If both are integer than return Right, if both are Doubles than return Left
-                  If one is a double then return double, if either are Nothing then return nothing.                
--}
 {- 
-  For Assignment 4:  TODO!!!!!!!! 
+  For Assignment 4:  
+     Added Boolean line to function definition. 
+     Changed the function signature to show that it needs to take in our new datatype
+        for Integers and Floats and Booleans 
+     Changed the Var case to handle the new ExprEval types    
+     Added If line to function definition for part 2
+     Added And, Or, and Not lines to function definition for part 3
 -}
 eval :: Expr -> Maybe ExprEval 
 eval (Integer i) = Just (Eval_Integer i)
@@ -134,11 +135,41 @@ eval (Let x e1 e2) =
          Just (Eval_Float v1) -> eval (subst x (Eval_Float v1) e2)
          Just (Eval_Boolean v1) -> eval (subst x (Eval_Boolean v1) e2)
          Nothing -> Nothing
+-- If eval e1 is true then return e2, if false return e3, else return Nothing because 
+-- did not receive boolean for e1.          
 eval (If e1 e2 e3) = 
      case eval e1 of 
           Just (Eval_Boolean True) -> eval e2 
           Just (Eval_Boolean False) -> eval e3 
-          _ -> Nothing         
+          _ -> Nothing 
+-- If eval e1 is True then check e2 for either being a boolean to return or anything else returns nothing
+-- because and needs booleans. If eval e1 is False then short circuit and return false. Otherwise
+-- that means e1 was not a boolean so return Nothing.          
+eval (And e1 e2) = 
+     case eval e1 of 
+          Just (Eval_Boolean True) -> 
+            case eval e2 of 
+              Just (Eval_Boolean b) -> Just (Eval_Boolean b)
+              _ -> Nothing 
+          Just (Eval_Boolean False) -> Just (Eval_Boolean False)
+          _ -> Nothing     
+-- Or is almost the same as And, except now short circuit on True, check eval e2 on false,
+-- and still return Nothing when e1 is not a boolean.           
+eval (Or e1 e2) = 
+     case eval e1 of 
+          Just (Eval_Boolean False) -> 
+            case eval e2 of 
+              Just (Eval_Boolean b) -> Just (Eval_Boolean b)
+              _ -> Nothing 
+          Just (Eval_Boolean True) -> Just (Eval_Boolean True)
+          _ -> Nothing 
+
+-- Not changes eval of e1 true to false, false to true and anything else to Nothing.         
+eval (Not e) = 
+     case eval e of
+          Just (Eval_Boolean True) -> Just (Eval_Boolean False)
+          Just (Eval_Boolean False) -> Just (Eval_Boolean True)      
+          _ -> Nothing                   
 
 test_eval = do
     -- // Boolean Tests
@@ -235,6 +266,39 @@ test_eval = do
      (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Float 1.1)))) (Just (Eval_Float 17.3)))
 
 
+    -- // If tests 
+
+    test "If eval: e1 is True Simple" (eval $ If (Boolean True) (Integer 10) (Float 15.1))  
+      (Just $ Eval_Integer 10)  
+
+    test "If eval: e1 is False Simple" True (checkFloatEquality (eval $ If (Boolean False) (Integer 10) (Float 15.1))  
+      (Just $ Eval_Float 15.1))
+
+    test "If eval: e1 is True Complex" True (checkFloatEquality (eval $ If (Boolean True) (Add (Integer 10) (Float 9.5)) (Float 15.1))
+      (Just $ Eval_Float 19.5))
+
+    test "If eval: e1 is False Complex" True (checkFloatEquality (eval $ If (Boolean False) (Float 15.1) (Sub (Integer 10) (Float 9.5)))
+      (Just $ Eval_Float 0.5))
+
+    test "If eval: e1 is not a boolean" (eval $ If (Div (Integer 5) (Float 5.1)) (Boolean False) (Boolean True))
+        (Nothing)       
+
+   -- // And tests 
+
+    test "And eval: e1 not a boolean simple" (eval $ And (Integer 10) (Boolean False)) (Nothing)    
+
+    test "And eval: e1 not a boolean complex" (eval $ And (If (Boolean False) (Float 5.5) 
+      (Add (Boolean True) (Integer 10))) (Boolean True)) (Nothing)  
+
+    test "And eval: e1 is False simple" (eval $ And (Boolean False) (Integer 3)) (Just (Eval_Boolean False))  
+
+    test "And eval: e1 is False complex" (eval $ And (If (Boolean False) (Float 5.5) (Boolean False)) 
+      (Float 3.5)) (Just (Eval_Boolean False))
+
+
+
+
+
 
 -- |Substitutes the given value for the given variable in the given expression.
 -- Given value can now be either a double or an integer 
@@ -244,6 +308,8 @@ test_eval = do
  Changed the function signature to show that it needs to take in our new datatype
     for Integers and Floats and Booleans 
  Changed the Var case to handle the new ExprEval types    
+ Added If line to function definition for part 2
+ Added And, Or, and Not lines to function definition for part 3
 -}
 subst :: Variable -> ExprEval -> Expr -> Expr
 subst _ _ (Integer n) = Integer n
@@ -261,7 +327,10 @@ subst x v (Mul e1 e2) = Mul (subst x v e1) (subst x v e2)
 subst x v (Div e1 e2) = Div (subst x v e1) (subst x v e2)
 subst x v (Let y e1 e2) | x == y = Let y (subst x v e1) e2
                         | otherwise = Let y (subst x v e1) (subst x v e2)
-subst x v (If e1 e2 e3) = If (subst x v e1) (subst x v e2) (subst x v e3)                           
+subst x v (If e1 e2 e3) = If (subst x v e1) (subst x v e2) (subst x v e3)     
+subst x v (And e1 e2) = And (subst x v e1) (subst x v e2)
+subst x v (Or e1 e2) = Or (subst x v e1) (subst x v e2)
+subst x v (Not e1) = Not (subst x v e1)                     
 
 
 
@@ -271,43 +340,43 @@ test_subst = do
 
     test "subst x 42 y" (subst "x" (Eval_Integer 42) (Var "y")) (Var "y")
 
-    test "subst Add Test Simple" (subst "x" (Eval_Integer 10) (Add (Integer 20) (Integer 4)))
+    test "subst Add Test Simple Integer" (subst "x" (Eval_Integer 10) (Add (Integer 20) (Integer 4)))
      (Add (Integer 20) (Integer 4))
 
-    test "subst Add Test Complex" (subst "x" (Eval_Integer 10) (Add (Var "x") (Integer 4)))
+    test "subst Add Test Complex Integer" (subst "x" (Eval_Integer 10) (Add (Var "x") (Integer 4)))
      (Add (Integer 10) (Integer 4))
 
-    test "subst Sub Test Simple" (subst "x" (Eval_Integer 10) (Sub (Integer 20) (Integer 4)))
+    test "subst Sub Test Simple Integer" (subst "x" (Eval_Integer 10) (Sub (Integer 20) (Integer 4)))
      (Sub (Integer 20) (Integer 4))
 
-    test "subst Sub Test Complex" (subst "x" (Eval_Integer 10) (Sub (Var "x") (Integer 4)))
+    test "subst Sub Test Complex Integer" (subst "x" (Eval_Integer 10) (Sub (Var "x") (Integer 4)))
      (Sub (Integer 10) (Integer 4))
 
-    test "subst Mul Test Simple" (subst "x" (Eval_Integer 10) (Mul (Integer 20) (Integer 4)))
+    test "subst Mul Test Simple Integer" (subst "x" (Eval_Integer 10) (Mul (Integer 20) (Integer 4)))
      (Mul (Integer 20) (Integer 4))
 
-    test "subst Mul Test Complex" (subst "x" (Eval_Integer 10) (Mul (Var "x") (Integer 4)))
+    test "subst Mul Test Complex Integer" (subst "x" (Eval_Integer 10) (Mul (Var "x") (Integer 4)))
      (Mul (Integer 10) (Integer 4))
 
-    test "subst Div Test Simple" (subst "x" (Eval_Integer 10) (Div (Integer 20) (Integer 4)))
+    test "subst Div Test Simple Integer" (subst "x" (Eval_Integer 10) (Div (Integer 20) (Integer 4)))
      (Div (Integer 20) (Integer 4))
 
-    test "subst Div Test Complex" (subst "x" (Eval_Integer 10) (Div (Var "x") (Integer 4)))
+    test "subst Div Test Complex Integer" (subst "x" (Eval_Integer 10) (Div (Var "x") (Integer 4)))
      (Div (Integer 10) (Integer 4))
 
-    test "subst nested variable Test" (subst "x" (Eval_Integer 10) (Div
+    test "subst nested variable Test Integer" (subst "x" (Eval_Integer 10) (Div
      (Sub (Integer 10) (Var "x")) (Add (Var "y") (Integer 15))))
       (Div (Sub (Integer 10) (Integer 10)) (Add (Var "y") (Integer 15)))
 
-    test "subst let Test 1" (subst "x" (Eval_Integer 10)
+    test "subst let Test 1 Integer" (subst "x" (Eval_Integer 10)
      (Let "x" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "x" (Add (Integer 10) (Integer 6)) (Sub (Var "x") (Integer 16)))
 
-    test "subst let Test 2" (subst "x" (Eval_Integer 10)
+    test "subst let Test 2 Integer" (subst "x" (Eval_Integer 10)
      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Var "y") (Integer 6)) (Sub (Integer 10) (Integer 16)))
 
-    test "subst let Test 3" (subst "x" (Eval_Integer 10)
+    test "subst let Test 3 Integer" (subst "x" (Eval_Integer 10)
      (Let "y" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Integer 10) (Integer 6)) (Sub (Integer 10) (Integer 16)))
 
@@ -349,11 +418,11 @@ test_subst = do
      (Let "x" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "x" (Add (Float 10.5) (Integer 6)) (Sub (Var "x") (Integer 16)))
 
-    test "subst let Test 2" (subst "x" (Eval_Float 10.5)
+    test "subst let Test 2 Float" (subst "x" (Eval_Float 10.5)
      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Var "y") (Integer 6)) (Sub (Float 10.5) (Integer 16)))
 
-    test "subst let Test 3" (subst "x" (Eval_Float 10.5)
+    test "subst let Test 3 Float" (subst "x" (Eval_Float 10.5)
      (Let "y" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Float 10.5) (Integer 6)) (Sub (Float 10.5) (Integer 16)))
 
@@ -362,45 +431,119 @@ test_subst = do
 
     test "subst x 42.5 y" (subst "x" (Eval_Boolean True) (Var "y")) (Var "y")
 
-    test "subst Add Test Simple Float" (subst "x" (Eval_Boolean True) (Add (Integer 20) (Integer 4)))
+    test "subst Add Test Simple Boolean" (subst "x" (Eval_Boolean True) (Add (Integer 20) (Integer 4)))
      (Add (Integer 20) (Integer 4))
 
-    test "subst Add Test Complex Float" (subst "x" (Eval_Boolean True) (Add (Var "x") (Integer 4)))
+    test "subst Add Test Complex Boolean" (subst "x" (Eval_Boolean True) (Add (Var "x") (Integer 4)))
      (Add (Boolean True) (Integer 4))
 
-    test "subst Sub Test Simple Float" (subst "x" (Eval_Boolean True) (Sub (Integer 20) (Integer 4)))
+    test "subst Sub Test Simple Boolean" (subst "x" (Eval_Boolean True) (Sub (Integer 20) (Integer 4)))
      (Sub (Integer 20) (Integer 4))
 
-    test "subst Sub Test Complex Float" (subst "x" (Eval_Boolean False) (Sub (Var "x") (Integer 4)))
+    test "subst Sub Test Complex Boolean" (subst "x" (Eval_Boolean False) (Sub (Var "x") (Integer 4)))
      (Sub (Boolean False) (Integer 4))
 
-    test "subst Mul Test Simple Float" (subst "x" (Eval_Boolean False) (Mul (Integer 20) (Integer 4)))
+    test "subst Mul Test Simple Boolean" (subst "x" (Eval_Boolean False) (Mul (Integer 20) (Integer 4)))
      (Mul (Integer 20) (Integer 4))
 
-    test "subst Mul Test Complex Float" (subst "x" (Eval_Boolean False) (Mul (Var "x") (Integer 4)))
+    test "subst Mul Test Complex Boolean" (subst "x" (Eval_Boolean False) (Mul (Var "x") (Integer 4)))
      (Mul (Boolean False) (Integer 4))
 
-    test "subst Div Test Simple Float" (subst "x" (Eval_Boolean True) (Div (Integer 20) (Integer 4)))
+    test "subst Div Test Simple Boolean" (subst "x" (Eval_Boolean True) (Div (Integer 20) (Integer 4)))
      (Div (Integer 20) (Integer 4))
 
-    test "subst Div Test Complex Float" (subst "x" (Eval_Boolean True) (Div (Var "x") (Integer 4)))
+    test "subst Div Test Complex Boolean" (subst "x" (Eval_Boolean True) (Div (Var "x") (Integer 4)))
      (Div (Boolean True) (Integer 4))
 
-    test "subst nested variable Test Float" (subst "x" (Eval_Boolean True) (Div
+    test "subst nested variable Test Boolean" (subst "x" (Eval_Boolean True) (Div
      (Sub (Integer 10) (Var "x")) (Add (Var "y") (Integer 15))))
       (Div (Sub (Integer 10) (Boolean True)) (Add (Var "y") (Integer 15)))
 
-    test "subst let Test 1 Float" (subst "x" (Eval_Boolean False)
+    test "subst let Test 1 Boolean" (subst "x" (Eval_Boolean False)
      (Let "x" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "x" (Add (Boolean False) (Integer 6)) (Sub (Var "x") (Integer 16)))
 
-    test "subst let Test 2" (subst "x" (Eval_Boolean True)
+    test "subst let Test 2 Boolean" (subst "x" (Eval_Boolean True)
      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Var "y") (Integer 6)) (Sub (Boolean True) (Integer 16)))
 
-    test "subst let Test 3" (subst "x" (Eval_Boolean False)
+    test "subst let Test 3 Boolean" (subst "x" (Eval_Boolean False)
      (Let "y" (Add (Var "x") (Integer 6)) (Sub (Var "x") (Integer 16))))
       (Let "y" (Add (Boolean False) (Integer 6)) (Sub (Boolean False) (Integer 16)))
+
+
+    -- If tests 
+
+    test "subst if test No subst" (subst "x" (Eval_Integer 5) (If (Boolean True) (Integer 1) (Float 5.1))) 
+      (If (Boolean True) (Integer 1) (Float 5.1))  
+
+    test "subst if test Subst into e1" (subst "x" (Eval_Integer 5) (If (Var "x") (Integer 1) (Float 5.1))) 
+      (If (Integer 5) (Integer 1) (Float 5.1))    
+
+    test "subst if test Subst into e2" (subst "x" (Eval_Integer 5) (If (Boolean True) (Var "x") (Float 5.1))) 
+      (If (Boolean True) (Integer 5) (Float 5.1))   
+
+    test "subst if test Subst into e3 with other variable present" (subst "x" (Eval_Integer 5) (If (Boolean True) (Var "y") (Var "x"))) 
+      (If (Boolean True) (Var "y") (Integer 5))   
+
+    test "subst if test Subst into a let" (subst "x" (Eval_Integer 5) (If (Boolean True) 
+      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16))) (Integer 10)))
+        (If (Boolean True) (Let "y" (Add (Var "y") (Integer 6)) 
+          (Sub (Integer 5) (Integer 16))) (Integer 10))    
+
+    -- And tests 
+
+    test "subst and test No subst" (subst "x" (Eval_Integer 5) (And (Boolean True) (Float 5.1))) 
+      (And (Boolean True) (Float 5.1))  
+
+    test "subst and test Subst into e1" (subst "x" (Eval_Integer 5) (And (Var "x") (Float 5.1))) 
+      (And (Integer 5) (Float 5.1))    
+
+    test "subst and test Subst into e2" (subst "x" (Eval_Integer 5) (And (Boolean True) (Var "x"))) 
+      (And (Boolean True) (Integer 5))   
+
+    test "subst and test Subst into e2 with other variable present" (subst "x" (Eval_Integer 5) (And (Var "y") (Var "x"))) 
+      (And (Var "y") (Integer 5))   
+
+    test "subst and test Subst into a let" (subst "x" (Eval_Integer 5) (And (Boolean True) 
+      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16)))))
+        (And (Boolean True) (Let "y" (Add (Var "y") (Integer 6)) 
+          (Sub (Integer 5) (Integer 16))))   
+
+    -- Or tests 
+
+    test "subst or test No subst" (subst "x" (Eval_Integer 5) (Or (Boolean True) (Float 5.1))) 
+      (Or (Boolean True) (Float 5.1))  
+
+    test "subst or test Subst into e1" (subst "x" (Eval_Integer 5) (Or (Var "x") (Float 5.1))) 
+      (Or (Integer 5) (Float 5.1))    
+
+    test "subst or test Subst into e2" (subst "x" (Eval_Integer 5) (Or (Boolean True) (Var "x"))) 
+      (Or (Boolean True) (Integer 5))   
+
+    test "subst or test Subst into e2 with other variable present" (subst "x" (Eval_Integer 5) (Or (Var "y") (Var "x"))) 
+      (Or (Var "y") (Integer 5))   
+
+    test "subst or test Subst into a let" (subst "x" (Eval_Integer 5) (Or (Boolean True) 
+      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16)))))
+        (Or (Boolean True) (Let "y" (Add (Var "y") (Integer 6)) 
+          (Sub (Integer 5) (Integer 16))))   
+
+    -- Not tests 
+
+    test "subst not test No subst" (subst "x" (Eval_Integer 5) (Not (Boolean True))) 
+      (Not (Boolean True))  
+
+    test "subst not test Subst into e" (subst "x" (Eval_Integer 5) (Not (Var "x"))) 
+      (Not (Integer 5))    
+  
+    test "subst not test Subst into e with other variable present" (subst "x" (Eval_Integer 5) (Not (Var "y"))) 
+      (Not (Var "y"))   
+
+    test "subst not test Subst into a let" (subst "x" (Eval_Integer 5) (Not 
+      (Let "y" (Add (Var "y") (Integer 6)) (Sub (Var "x") (Integer 16)))))
+        (Not (Let "y" (Add (Var "y") (Integer 6)) 
+          (Sub (Integer 5) (Integer 16))))              
 
 
 -- |Run the given protoScheme s-expression, returning an s-expression
@@ -421,6 +564,8 @@ test_runSExpression = do
 
     test "runSExpression Test Variable" (runSExpression $ S.Symbol "v") (Nothing)
 
+    -- Integer Tests
+
     test "Integer runSExpression 42" (runSExpression $ S.Integer 42) (Just (S.Integer 42))
 
     test "Integer runSExpression Test Add" (runSExpression $ S.List [S.Symbol "+",
@@ -440,15 +585,17 @@ test_runSExpression = do
       S.Integer 10, S.Integer 6]]) 
      (Just $ S.Integer 3)
 
-    test "Integer runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
+    test "Integer runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
      S.List [S.Symbol "+", S.Integer 10, S.Integer 4], S.List [S.Symbol "+", S.Symbol "x", S.Integer 1]])
      (Just $ S.Integer 15)
 
-    test "Integer runExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
-     S.List [S.Symbol "-", S.Integer 20, S.Integer 8], S.List [S.Symbol "x",
+    test "Integer runExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Integer 8], S.List [S.Symbol "Let", S.Symbol "x",
       S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
        S.Symbol "x", S.Integer 1]]])
        (Just $ S.Integer 17)
+
+    -- Real Tests 
 
     test "Real runSExpression 42" (runSExpression $ S.Real 42.0) (Just $ S.Real 42.0)
 
@@ -468,42 +615,125 @@ test_runSExpression = do
      S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
       S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.3666666666666667))
 
-    test "Real runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
+    test "Real runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
      S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
      (Just $ S.Real 15.299999999999999)
 
-    test "Real runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
-     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+    test "Real runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "Let", S.Symbol "x",
       S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
        S.Symbol "x", S.Real 1.1]]])
      (Just $ S.Real 17.200000000000003) 
 
-    test "Mixed runSExpression 42" (runSExpression $ S.Real 42.0) (Just $ S.Real 42.0)
+    -- Mixed Tests 
 
     test "Mixed runSExpression Test Add" (runSExpression $ S.List [S.Symbol "+",
-     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 14.2)
+     S.Real 4.1, S.Integer 10]) (Just $ S.Real 14.1)
 
     test "Mixed runSExpression Test Sub" (runSExpression $ S.List [S.Symbol "-",
-     S.Real 4.1, S.Real 10.1]) (Just $ S.Real (-6))
+     S.Real 4.1, S.Integer 10]) (Just $ S.Real (-5.9))
 
     test "Mixed runSExpression Test Mul" (runSExpression $ S.List [S.Symbol "*",
-     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 41.41)
+     S.Real 4.1, S.Integer 10]) (Just $ S.Real 41)
 
     test "Mixed runSExpression Test Div" (runSExpression $ S.List [S.Symbol "/",
-     S.Real 4.1, S.Real 10.1]) (Just $ S.Real 0.4059405940594059)
+     S.Real 4.1, S.Integer 10]) (Just $ S.Real 0.41)
 
     test "Mixed runSExpression Test Nested Operations" (runSExpression $ S.List [S.Symbol "/",
-     S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
-      S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.3666666666666667))
+     S.List [S.Symbol "+", S.Real 4.1, S.Integer 10], S.List [S.Symbol "-",
+      S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.35))
 
-    test "Mixed runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "x",
-     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
-     (Just $ S.Real 15.299999999999999)
+    test "Mixed runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
+     S.List [S.Symbol "+", S.Integer 10, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+     (Just $ S.Real 15.2)
 
-    test "Mixed runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "y",
-     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "x",
+    test "Mixed runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Real 8.1], S.List [S.Symbol "Let", S.Symbol "x",
       S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
        S.Symbol "x", S.Real 1.1]]])
-     (Just $ S.Real 17.200000000000003)   
+     (Just $ S.Real 17.1)   
 
+
+    -- Boolean tests
+
+    test "Boolean runSExpression Test 1" (runSExpression $ S.Boolean False) 
+      (Just $ S.Boolean False)
+
+    test "Boolean runSExpression Test 2" (runSExpression $ S.Boolean True) 
+      (Just $ S.Boolean True)  
+
+    -- If tests 
+
+    test "If runSExpression Test e1 is True Simple" (runSExpression $ S.List 
+      [S.Symbol "If", S.Boolean True, S.Integer 10, S.Real 15])
+        (Just $ S.Integer 10)  
+
+    test "If runSExpression Test e1 is False Simple" (runSExpression $ S.List 
+      [S.Symbol "If", S.Boolean False, S.Integer 10, S.Real 15])
+        (Just $ S.Real 15)      
+
+    test "If runSExpression Test e1 is True Complex" (runSExpression $ S.List 
+      [S.Symbol "If", S.Boolean True, S.List [S.Symbol "+", S.Integer 10, S.Integer 15] , S.Real 15])
+        (Just $ S.Integer 25)  
+
+    test "If runSExpression Test e1 is False Complex" (runSExpression $ S.List 
+      [S.Symbol "If", S.Boolean False, S.Integer 10, S.List [S.Symbol "+", S.Real 10.1, S.Real 15.1]])
+        (Just $ S.Real 25.2)     
+
+    test "If runSExpression Test e1 is not a boolean" (runSExpression $ S.List 
+      [S.Symbol "If", S.List [S.Symbol "+", S.Integer 10, S.Integer 15], S.Integer 10, S.Real 15])
+        (Nothing)       
+
+    -- TODODODODODODODOODDO 
+
+    -- And tests
+    test "And runSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "And" , S.Boolean True, S.Integer 10]) 
+          (And (Boolean True) (Integer 10))   
+
+    test "And runSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "And" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (And (Boolean False) (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "And runSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "And" , S.List [S.Symbol "And" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (And (And (Integer 10) (Float 15.1))
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))    
+
+    -- Or tests
+    test "Or fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.Boolean True, S.Integer 10]) 
+          (Or (Boolean True) (Integer 10))   
+
+    test "Or fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Or (Boolean False) (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "Or fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "Or" , S.List [S.Symbol "Or" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Or (Or (Integer 10) (Float 15.1))
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))    
+
+    -- Not tests
+    test "Not fromSExpression Test 1" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.Boolean True]) 
+          (Not (Boolean True))   
+
+    test "Not fromSExpression Test 2" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+            (Not (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))       
+
+    test "Not fromSExpression Test 3" (fromSExpression $ S.List [
+        S.Symbol "Not" , S.List [S.Symbol "Or" , S.Integer 10, 
+         S.List [S.Symbol "Let", S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
+            (Not (Or (Integer 10)
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))))   
         
