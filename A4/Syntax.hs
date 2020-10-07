@@ -40,7 +40,12 @@ type Variable = String
          | (if <Expr> <Expr> <Expr>)
          | (and <Expr> <Expr>)
          | (or <Expr> <Expr>)
-         | (not <Expr>)    
+         | (not <Expr>)  
+         | (< <Expr> <Expr>)  
+         | (> <Expr> <Expr>)
+         | (= <Expr> <Expr>)
+         | (cond (<Expr> <Expr>)* )
+         | (cond (<Expr> <Expr>)* (else <Expr>))
 -}
 
 -- |protoScheme expressions
@@ -73,7 +78,13 @@ data Expr = Integer Integer
           | And Expr Expr 
           | Or Expr Expr
           | Not Expr
+          | Less_Than Expr Expr
+          | Greater_Than Expr Expr
+          | Equal_To Expr Expr
+          | Cond [(Expr, Expr)]
           deriving (Eq, Show)
+
+-- | Cond [(Expr Expr)] (Else Expr)    
 
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
@@ -83,6 +94,7 @@ data Expr = Integer Integer
   Added S.Boolean case for part 1
   Added If case for part 2
   Added And, Or, and Not cases for part 3
+  Added Less_Than, Greater_Than, and Equal for part 4
 -}
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
@@ -107,7 +119,14 @@ fromSExpression (S.List [S.Symbol "Or", e1, e2]) =
     Or (fromSExpression e1) (fromSExpression e2)   
 fromSExpression (S.List [S.Symbol "Not", e]) = 
     Not (fromSExpression e)        
-
+fromSExpression (S.List [S.Symbol "Less_Than", e1, e2]) = 
+    Less_Than (fromSExpression e1) (fromSExpression e2)   
+fromSExpression (S.List [S.Symbol "Greater_Than", e1, e2]) = 
+    Greater_Than (fromSExpression e1) (fromSExpression e2)  
+fromSExpression (S.List [S.Symbol "Equal_To", e1, e2]) = 
+    Equal_To (fromSExpression e1) (fromSExpression e2)     
+--fromSExpression (S.List [S.Symbol "Cond", S.List[(e1, e2) : xs]]) = 
+--    Cond (fromSExpression e1) (fromSExpression e2) (fromSExpression S.List[S.Symbol "Cond", xs])
 
 test_fromSExpression = do
     
@@ -306,7 +325,70 @@ test_fromSExpression = do
          S.List [S.Symbol "Let", S.Symbol "x",
           S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
             (Not (Or (Integer 10)
-             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))))                                  
+             (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1)))))    
+
+    --Less_Than tests
+    test "fromSExpression Less_Than Test 1" (fromSExpression $ S.List [S.Symbol "Less_Than", S.Integer 7, S.Integer 6])
+      (Less_Than (Integer 7) (Integer 6)) 
+
+    test "fromSExpression Less_Than Test 2" (fromSExpression $ S.List [S.Symbol "Less_Than", S.Integer 6, S.Integer 7])
+     (Less_Than (Integer 6) (Integer 7))
+    
+    test "fromSExpression Less_Than Test 3" (fromSExpression $ S.List [S.Symbol "Less_Than", S.Real 6.8, S.Real 6.3])
+     (Less_Than (Float 6.8) (Float 6.3)) 
+    
+    test "fromSExpression Less_Than Test 4" (fromSExpression $ S.List [S.Symbol "Less_Than", S.Boolean True, S.Real 6.3])
+     (Less_Than (Boolean True) (Float 6.3))
+    
+    test "fromSExpression Less_Than Test 5" (fromSExpression $ S.List [S.Symbol "Less_Than", S.List [S.Symbol "+", S.Integer 7, 
+       S.Integer 6], S.Symbol "x"])
+      (Less_Than (Add (Integer 7) (Integer 6)) (Var "x"))
+        
+    test "fromSExpression Less_Than Test 6" (fromSExpression $ S.List [S.Symbol "Less_Than", S.List [S.Symbol "If", S.Boolean True, 
+       S.Boolean True, S.Boolean False], S.List [S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])   
+      (Less_Than (If (Boolean True) (Boolean True) (Boolean False)) (Let "v" (Float 6.3) (Float 6.3))) 
+
+     --Greater_Than tests
+    test "fromSExpression Greater_Than Test 1" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.Integer 7, S.Integer 6])
+      (Greater_Than (Integer 7) (Integer 6)) 
+
+    test "fromSExpression Greater_Than Test 2" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.Integer 6, S.Integer 7])
+     (Greater_Than (Integer 6) (Integer 7))
+    
+    test "fromSExpression Greater_Than Test 3" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.Real 6.8, S.Real 6.3])
+     (Greater_Than (Float 6.8) (Float 6.3)) 
+    
+    test "fromSExpression Greater_Than Test 4" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.Boolean True, S.Real 6.3])
+     (Greater_Than (Boolean True) (Float 6.3))
+    
+    test "fromSExpression Greater_Than Test 5" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.List[S.Symbol "+", S.Integer 7, 
+       S.Integer 6], S.Symbol "x"])
+      (Greater_Than (Add (Integer 7) (Integer 6)) (Var "x"))
+        
+    test "fromSExpression Greater_Than Test 6" (fromSExpression $ S.List [S.Symbol "Greater_Than", S.List [S.Symbol "If", S.Boolean True, 
+       S.Boolean True, S.Boolean False], S.List[S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])   
+     (Greater_Than (If (Boolean True) (Boolean True) (Boolean False)) (Let "v" (Float 6.3) (Float 6.3)))                                   
+
+    --Equal_To tests
+    test "fromSExpression Equal_To Test 1" (fromSExpression $ S.List [S.Symbol "Equal_To", S.Integer 7, S.Integer 6])
+      (Equal_To (Integer 7) (Integer 6)) 
+
+    test "fromSExpression Equal_To Test 2" (fromSExpression $ S.List [S.Symbol "Equal_To", S.Integer 6, S.Integer 7])
+     (Equal_To (Integer 6) (Integer 7))
+    
+    test "fromSExpression Equal_To Test 3" (fromSExpression $ S.List [S.Symbol "Equal_To", S.Real 6.8, S.Real 6.3])
+     (Equal_To (Float 6.8) (Float 6.3)) 
+    
+    test "fromSExpression Equal_To Test 4" (fromSExpression $ S.List [S.Symbol "Equal_To", S.Boolean True, S.Real 6.3])
+     (Equal_To (Boolean True) (Float 6.3))
+    
+    test "fromSExpression Equal_To Test 5" (fromSExpression $ S.List [S.Symbol "Equal_To", S.List[S.Symbol "+", S.Integer 7, 
+       S.Integer 6], S.Symbol "x"])
+      (Equal_To (Add (Integer 7) (Integer 6)) (Var "x"))
+        
+    test "fromSExpression Equal_To Test 6" (fromSExpression $ S.List [S.Symbol "Equal_To", S.List [S.Symbol "If", S.Boolean True, 
+       S.Boolean True, S.Boolean False], S.List[S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])   
+     (Equal_To (If (Boolean True) (Boolean True) (Boolean False)) (Let "v" (Float 6.3) (Float 6.3)))                                   
 
 -- ================================================================================================
 
@@ -315,6 +397,7 @@ test_fromSExpression = do
   Added S.Boolean case for part 1
   Added If case for part 2
   Added And, Or, and Not cases for part 3
+  Added Less_Than, Greater_Than, and Equal for part 4
 -}
 
 -- |Convert a protoScheme expression into its s-expression representation
@@ -332,6 +415,11 @@ toSExpression (If x y z) = S.List [S.Symbol "If", toSExpression x, toSExpression
 toSExpression (And x y) = S.List [S.Symbol "And", toSExpression x, toSExpression y]
 toSExpression (Or x y) = S.List [S.Symbol "Or", toSExpression x, toSExpression y]
 toSExpression (Not x) = S.List [S.Symbol "Not", toSExpression x]
+toSExpression (Less_Than x y) = S.List [S.Symbol "Less_Than", toSExpression x, toSExpression y]
+toSExpression (Greater_Than x y) = S.List [S.Symbol "Greater_Than", toSExpression x, toSExpression y]
+toSExpression (Equal_To x y) = S.List [S.Symbol "Equal_To", toSExpression x, toSExpression y]
+toSExpression (Cond []) = S.List [S.Symbol "Cond"]
+-- toSExpression (Cond ((x, y) : zs)) = (S.List [toSExpression x, toSExpression y]) : toSExpression (Cond zs)
 
 test_toSExpression = do
     test "toSExpression true" (toSExpression (Boolean True)) (S.Boolean True)
@@ -483,14 +571,75 @@ test_toSExpression = do
 
     test "toSExpression Not Test 2" (toSExpression $  (Not (Let "x" (Add (Float 10.1) (Float 4.1)) 
       (Add (Var "x") (Float 1.1))))) (S.List [S.Symbol "Not" , S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
-                 
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]])  
 
     test "toSExpression Not Test 3" (toSExpression $ (Not (Or (Integer 10)
        (Let "x" (Add (Float 10.1) (Float 4.1)) (Add (Var "x") (Float 1.1))))))     
          (S.List [S.Symbol "Not" , S.List [S.Symbol "Or" , S.Integer 10, S.List [S.Symbol "Let", S.Symbol "x",
           S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
-                  
+
+    -- Less_Than Tests
+    test "toSExpression Less_Than Test 1" (toSExpression $ (Less_Than (Integer 7) (Integer 6))) 
+        (S.List [S.Symbol "Less_Than", S.Integer 7, S.Integer 6]) 
+
+    test "toSExpression Less_Than Test 2" (toSExpression $ (Less_Than (Integer 6) (Integer 7))) 
+        (S.List [S.Symbol "Less_Than", S.Integer 6, S.Integer 7]) 
+    
+    test "toSExpression Less_Than Test 3" (toSExpression $ (Less_Than (Float 6.8) (Float 6.3))) 
+        (S.List [S.Symbol "Less_Than", S.Real 6.8, S.Real 6.3])
+    
+    test "toSExpression Less_Than Test 4" (toSExpression $ (Less_Than (Boolean True) (Float 6.3))) 
+        (S.List [S.Symbol "Less_Than", S.Boolean True, S.Real 6.3])
+    
+    test "toSExpression Less_Than Test 5" (toSExpression $ (Less_Than (Add (Integer 7) (Integer 6)) (Var "x"))) 
+        (S.List [S.Symbol "Less_Than", S.List[S.Symbol "+", S.Integer 7, S.Integer 6], S.Symbol "x"])
+
+    test "toSExpression Less_Than Test 6" (toSExpression $ (Less_Than (If (Boolean True) (Boolean True) (Boolean False))
+        (Let "v" (Float 6.3) (Float 6.3)))) 
+        (S.List [S.Symbol "Less_Than", S.List [S.Symbol "If", S.Boolean True, S.Boolean True, S.Boolean False],
+          S.List[S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])
+
+  -- Greater_Than Tests
+    test "toSExpression Greater_Than Test 1" (toSExpression $ (Greater_Than (Integer 7) (Integer 6))) 
+        (S.List [S.Symbol "Greater_Than", S.Integer 7, S.Integer 6]) 
+
+    test "toSExpression Greater_Than Test 2" (toSExpression $ (Greater_Than (Integer 6) (Integer 7))) 
+        (S.List [S.Symbol "Greater_Than", S.Integer 6, S.Integer 7]) 
+    
+    test "toSExpression Greater_Than Test 3" (toSExpression $ (Greater_Than (Float 6.8) (Float 6.3))) 
+        (S.List [S.Symbol "Greater_Than", S.Real 6.8, S.Real 6.3])
+    
+    test "toSExpression Greater_Than Test 4" (toSExpression $ (Greater_Than (Boolean True) (Float 6.3))) 
+        (S.List [S.Symbol "Greater_Than", S.Boolean True, S.Real 6.3])
+    
+    test "toSExpression Greater_Than Test 5" (toSExpression $ (Greater_Than (Add (Integer 7) (Integer 6)) (Var "x"))) 
+        (S.List [S.Symbol "Greater_Than", S.List[S.Symbol "+", S.Integer 7, S.Integer 6], S.Symbol "x"])
+
+    test "toSExpression Greater_Than Test 6" (toSExpression $ (Greater_Than (If (Boolean True) (Boolean True) (Boolean False))
+        (Let "v" (Float 6.3) (Float 6.3)))) 
+        (S.List [S.Symbol "Greater_Than", S.List [S.Symbol "If", S.Boolean True, S.Boolean True, S.Boolean False],
+          S.List[S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])
+
+ -- Equal To Tests
+    test "toSExpression Equal_To Test 1" (toSExpression $ (Equal_To (Integer 7) (Integer 6))) 
+        (S.List [S.Symbol "Equal_To", S.Integer 7, S.Integer 6]) 
+
+    test "toSExpression Equal_To Test 2" (toSExpression $ (Equal_To (Integer 6) (Integer 7))) 
+        (S.List [S.Symbol "Equal_To", S.Integer 6, S.Integer 7]) 
+    
+    test "toSExpression Equal_To Test 3" (toSExpression $ (Equal_To (Float 6.8) (Float 6.3))) 
+        (S.List [S.Symbol "Equal_To", S.Real 6.8, S.Real 6.3])
+    
+    test "toSExpression Equal_To Test 4" (toSExpression $ (Equal_To (Boolean True) (Float 6.3))) 
+        (S.List [S.Symbol "Equal_To", S.Boolean True, S.Real 6.3])
+    
+    test "toSExpression Equal_To Test 5" (toSExpression $ (Equal_To (Add (Integer 7) (Integer 6)) (Var "x"))) 
+        (S.List [S.Symbol "Equal_To", S.List[S.Symbol "+", S.Integer 7, S.Integer 6], S.Symbol "x"])
+
+    test "toSExpression Equal_To Test 6" (toSExpression $ (Equal_To (If (Boolean True) (Boolean True) (Boolean False))
+        (Let "v" (Float 6.3) (Float 6.3)))) 
+        (S.List [S.Symbol "Equal_To", S.List [S.Symbol "If", S.Boolean True, S.Boolean True, S.Boolean False],
+          S.List[S.Symbol "Let", S.Symbol "v", S.Real 6.3, S.Real 6.3]])
 
 
 -- |Convert an evaluation result into s-expression
