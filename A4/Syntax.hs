@@ -64,6 +64,8 @@ type Variable = String
   Added Boolean Bool line for part 1. 
   Added If line for part 2
   Added And, Or, and Not for part 3
+  Added Less_Than, Greater_Than, and Equal for part 4
+  Added Cond with Tuples and Else
 -}
 data Expr = Integer Integer
           | Float Double
@@ -84,10 +86,7 @@ data Expr = Integer Integer
           | Cond [(Expr, Expr)]
           | Else 
           deriving (Eq, Show)
-
-          
-
--- | Cond [(Expr Expr)] (Else Expr)    
+ 
 
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
@@ -460,7 +459,6 @@ toSExpression (Greater_Than x y) = S.List [S.Symbol "Greater_Than", toSExpressio
 toSExpression (Equal_To x y) = S.List [S.Symbol "Equal_To", toSExpression x, toSExpression y]
 toSExpression (Cond x) = S.List [S.Symbol "Cond", S.List (toSExpressionTupleListHelper x)]
 toSExpression (Else) = S.Symbol "Else"
--- toSExpression (Cond ((x, y) : zs)) = (S.List [toSExpression x, toSExpression y]) : toSExpression (Cond zs)
 
 -- Function that assists the toSExpression function by handling a list of 
 -- the Expr tuples and converting them to a list of S.Expr where a S.List [t1, t1] is how to represent a tuple.  
