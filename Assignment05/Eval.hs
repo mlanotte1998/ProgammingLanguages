@@ -15,6 +15,8 @@ module Eval where
 
 import Syntax
 
+import Prelude hiding (Left, Right)
+
 import qualified SExpression as S
 
 import SimpleTests (test)
@@ -51,21 +53,29 @@ test_checkFloatEquality = do
  -- ===============================================================================================
 
 -- |Evaluates the given expression to a value.
-{- 
-  For Assignment 4:  
-     Added Boolean line to function definition. 
-     Changed the function signature to show that it needs to take in our new datatype
-        for Integers and Floats and Booleans 
-     Changed the Var case to handle the new ExprEval types    
-     Added If line to function definition for part 2
-     Added And, Or, and Not lines to function definition for part 3
-     Added Less_Than, Greater_Than, and Equal for part 4
+{-
+ For Assignment 5: 
+ Added Pair, Left, and Right cases for Question 1. 
 -}
 eval :: Expr -> Maybe ExprEval 
 eval (Integer i) = Just (Eval_Integer i)
 eval (Float d) = Just (Eval_Float d)
 eval (Boolean b) = Just (Eval_Boolean b)
 eval (Var _) = Nothing
+eval (Pair e1 e2) = 
+     case eval e1 of 
+       (Just x) -> case eval e2 of 
+                      Just y -> Just (Eval_Pair x y) 
+                      _ -> Nothing
+       Nothing -> Nothing 
+eval (Left l ) = 
+    case eval l of 
+         Just (Eval_Pair e1 e2) -> Just e1 
+         _ -> Nothing 
+eval (Right l ) = 
+    case eval l of 
+         Just (Eval_Pair e1 e2) -> Just e2
+         _ -> Nothing 
 eval (Add e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) ->
@@ -238,7 +248,23 @@ eval (Equal_To e1 e2) =
                  Nothing -> Just (Eval_Boolean (True))
                  _ -> Nothing     
 
-eval (Cond x) = (evalTupleListHelper x)         
+eval (Cond x) = (evalTupleListHelper x)  
+eval (Real_Pred e) = case eval e of 
+                          Just (Eval_Float f) -> Just (Eval_Boolean True)        
+                          _ -> Just (Eval_Boolean False)
+eval (Integer_Pred e) = case eval e of 
+                          Just (Eval_Integer f) -> Just (Eval_Boolean True)        
+                          _ -> Just (Eval_Boolean False)
+eval (Boolean_Pred e) = case eval e of 
+                          Just (Eval_Boolean f) -> Just (Eval_Boolean True)        
+                          _ -> Just (Eval_Boolean False)
+eval (Number_Pred e) = case eval e of 
+                          Just (Eval_Float f) -> Just (Eval_Boolean True) 
+                          Just (Eval_Integer f) -> Just (Eval_Boolean True)       
+                          _ -> Just (Eval_Boolean False)
+eval (Pair_Pred e) = case eval e of 
+                          Just (Eval_Pair f) -> Just (Eval_Boolean True)        
+                          _ -> Just (Eval_Boolean False)                                                                                                        
 
 evalTupleListHelper :: [(Expr, Expr)] -> Maybe ExprEval
 evalTupleListHelper [] = Nothing 
@@ -482,40 +508,8 @@ test_eval = do
 
     test "Complex boolean operator test 2" (eval $ If (Not (Let "x" (Or (Boolean False) (Not (Boolean True))) (And (Var "x") (Boolean True))))
       (Add (Integer 10) (Integer 15)) (Div (Integer 50) (Integer 25))) (Just (Eval_Integer 25))      
-
-    -- // Cond Tests
-    test "Cond eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2)))])
-       (Just (Eval_Integer 7))
-
-    test "Cond eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
-        (Boolean True, (Div (Integer 4) (Integer 2)))])
-       (Just (Eval_Integer 2))
-
-    test "Cond eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
-        (Boolean False, (Div (Integer 4) (Integer 2)))])
-       (Nothing)
-
-    test "Cond eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
-        (Boolean False, (Div (Integer 4) (Integer 2)))])
-       (Nothing)
-       
-    test "Cond Else eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2))),
-        (Else, (Sub (Integer 5) (Integer 2)))])
-       (Just (Eval_Integer 7))
-
-    test "Cond Else eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
-        (Boolean True, (Div (Integer 4) (Integer 2))), (Else, (Mul (Float 5.1) (Float 2.0)))])
-       (Just (Eval_Integer 2))
-
-    test "Cond Else eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
-        (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.2)])
-       (Just (Eval_Float 2.2))
-
-    test "Cond Else eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
-        (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.1)])
-       (Nothing)
-
-   -- // Less_Than Tests 
+    
+    -- // Less_Than Tests 
    
     test "Less_Than eval: eval e1 is Integer and eval e2 is Integer greater than e1 simple" 
      (eval $ Less_Than (Integer 5) (Integer 10)) (Just (Eval_Boolean True))  
@@ -743,22 +737,49 @@ test_eval = do
      (If (Boolean True) (Sub (Integer 5) (Integer 2)) (Mul (Integer 5) (Integer 2)))) 
        (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), (Boolean True, (Sub (Integer 5) (Integer 2))), 
          (Else, (Mul (Integer 5) (Integer 2)))])
- 
-      
-     
+  
+    -- // Cond Tests
+    test "Cond eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2)))])
+       (Just (Eval_Integer 7))
 
+    test "Cond eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+        (Boolean True, (Div (Integer 4) (Integer 2)))])
+       (Just (Eval_Integer 2))
+
+    test "Cond eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+        (Boolean False, (Div (Integer 4) (Integer 2)))])
+       (Nothing)
+
+    test "Cond eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
+        (Boolean False, (Div (Integer 4) (Integer 2)))])
+       (Nothing)
+       
+    test "Cond Else eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2))),
+        (Else, (Sub (Integer 5) (Integer 2)))])
+       (Just (Eval_Integer 7))
+
+    test "Cond Else eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+        (Boolean True, (Div (Integer 4) (Integer 2))), (Else, (Mul (Float 5.1) (Float 2.0)))])
+       (Just (Eval_Integer 2))
+
+    test "Cond Else eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+        (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.2)])
+       (Just (Eval_Float 2.2))
+
+    test "Cond Else eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
+        (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.1)])
+       (Nothing)
+
+
+    -- // Pair Tests    
+    -- test "Pair eval "  
+     
 
 -- |Substitutes the given value for the given variable in the given expression.
 -- Given value can now be either a double or an integer 
 {-
- For Assignment 4:
- Added Boolean line to function definition. 
- Changed the function signature to show that it needs to take in our new datatype
-    for Integers and Floats and Booleans 
- Changed the Var case to handle the new ExprEval types    
- Added If line to function definition for part 2
- Added And, Or, and Not lines to function definition for part 3
- Added Less_Than, Greater_Than, and Equal for part 4
+ For Assignment 5: 
+ Added Pair, Left, and Right cases for Question 1. 
 -}
 subst :: Variable -> ExprEval -> Expr -> Expr
 subst _ _ (Integer n) = Integer n
@@ -770,6 +791,9 @@ subst x v (Var y) | x == y =
                            Eval_Float num -> Float num 
                            Eval_Boolean b-> Boolean b
                   | otherwise = Var y
+subst x v (Pair e1 e2) = Pair (subst x v e1) (subst x v e2)
+subst x v (Left e1) = Left (subst x v e1)
+subst x v (Right e1) = Right (subst x v e1)
 subst x v (Add e1 e2) = Add (subst x v e1) (subst x v e2)
 subst x v (Sub e1 e2) = Sub (subst x v e1) (subst x v e2)
 subst x v (Mul e1 e2) = Mul (subst x v e1) (subst x v e2)
@@ -785,6 +809,11 @@ subst x v (Greater_Than e1 e2) = Greater_Than (subst x v e1) (subst x v e2)
 subst x v (Equal_To e1 e2) = Equal_To (subst x v e1) (subst x v e2) 
 subst x v (Cond l) = Cond (substTupleListHelper x v l)    
 subst _ _ (Else) = Else       
+subst x v (Real_Pred e) = Real_Pred (subst x v e1)
+subst x v (Integer_Pred e) = Integer_Pred (subst x v e1)
+subst x v (Boolean_Pred e) = Boolean_Pred (subst x v e1)
+subst x v (Number_Pred e) = Number_Pred (subst x v e1)
+subst x v (Pair_Pred e) = Pair_Pred (subst x v e1)
 
 -- Function that is a helper for subst that handles the Cond case by 
 -- using recursion to call subst on every element in the Cond tuple list.
@@ -1093,8 +1122,43 @@ test_subst = do
     test "subst Cond complex test with Else" (subst "x" (Eval_Integer 15) 
      (Cond [(Var "x", Integer 10), (Else, Var "x")])) (Cond [(Integer 15, Integer 10), (Else, Integer 15)])                        
                            
+    -- Pair tests
 
+    test "subst Pair in left test" (subst "x" (Eval_Integer 1) (Pair (Var "x") (Float 1.6)))
+      (Pair (Integer 1) (Float 1.6))
 
+    test "subst Pair in right test" (subst "x" (Eval_Boolean True) (Pair (Integer 1) (Var "x")))
+      (Pair (Integer 1) (Boolean True))
+
+    test "subst Pair in none" (subst "x" (Eval_Boolean True) (Pair (Integer 1) (Boolean False)))
+      (Pair (Integer 1) (Boolean False))
+    
+    test "subst Pair nested" (subst "y" (Eval_Integer 5) (If (Boolean True) (Pair (Var "y") (Float 6.1))
+      (Pair (Integer 6) (Integer 7)))) 
+      (If (Boolean True) (Pair (Integer 5) (Float 6.1)) (Pair (Integer 6) (Integer 7)))
+
+    -- Left and Right test
+    test "subst Left in pair" (subst "y" (Eval_Float 5.1) (Left (Pair (Integer 1) (Var "y"))))
+       (Left (Pair (Integer 1) (Float 5.1)))
+    
+    test "subst Left not in pair" (subst "y" (Eval_Float 5.1) (Left (Pair (Integer 1) (Float 5.2))))
+       (Left (Pair (Integer 1) (Float 5.2)))
+
+    test "subst Left not pair" (subst "y" (Eval_Float 5.1) (Left (Float 5.2)))
+       (Left (Float 5.2))
+
+    test "subst Right in pair" (subst "y" (Eval_Float 5.1) (Right (Pair (Var "y") (Integer 1))))
+       (Right (Pair (Float 5.1) (Integer 1)))
+    
+    test "subst Right in pair2" (subst "y" (Eval_Float 5.1) (Right (Pair (Integer 1) (Var "y"))))
+       (Right (Pair (Integer 1) (Float 5.1)))
+    
+    test "subst Right not in pair" (subst "y" (Eval_Float 5.1) (Right (Pair (Integer 1) (Float 5.2))))
+       (Right (Pair (Integer 1) (Float 5.2)))
+
+    test "subst Right not pair" (subst "y" (Eval_Float 5.1) (Right (Var "y")))
+       (Right (Float 5.1))
+       
 -- |Run the given protoScheme s-expression, returning an s-expression
 -- representation of the result.
 runSExpression :: S.Expr -> Maybe S.Expr

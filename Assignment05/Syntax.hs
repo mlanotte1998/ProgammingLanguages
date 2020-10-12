@@ -14,6 +14,8 @@ module Syntax where
 
 import qualified SExpression as S
 
+import Prelude hiding (Left, Right)
+
 import SimpleTests (test)
 
 --Data type respresenting an Integer, a Double, or a Boolean
@@ -21,6 +23,7 @@ import SimpleTests (test)
 data ExprEval = Eval_Integer Integer 
               | Eval_Float Double
               | Eval_Boolean Bool 
+              | Eval_Pair ExprEval ExprEval
               deriving(Eq, Show) 
 
 
@@ -49,27 +52,14 @@ type Variable = String
          | (= <Expr> <Expr>)
          | (cond (<Expr> <Expr>)* )
          | (cond (<Expr> <Expr>)* (else <Expr>))
+         | (real? <Expr>)
+         | (integer? <Expr>)
+         | (number? <Expr>)
+         | (boolean? <Expr>)
+         | (pair? <Expr>)
 -}
 
 -- |protoScheme expressions
-{- 
- Only need to add a Float pattern of type double into the protoScheme syntax. 
- But to make eval work, need eval to return either an Integer or a Double now. 
- To do this, need to use the Either term with Maybe Double and Maybe Integer
- And for that to work, subst needs to take in a Integer or Double now as well. 
- To do this, need to use the Either term with Double and Integer. 
- Considered making our own datatype to act as either a Integer or a Double but
- after researching more on Haskell and how Either worked, it made more sense
- to go with the data type that is already available. 
--}
-{-
-  For Assignment 4: 
-  Added Boolean Bool line for part 1. 
-  Added If line for part 2
-  Added And, Or, and Not for part 3
-  Added Less_Than, Greater_Than, and Equal for part 4
-  Added Cond with Tuples and Else
--}
 data Expr = Integer Integer
           | Float Double
           | Boolean Bool
@@ -91,6 +81,11 @@ data Expr = Integer Integer
           | Equal_To Expr Expr
           | Cond [(Expr, Expr)]
           | Else 
+          | Real_Pred Expr 
+          | Integer_Pred Expr
+          | Number_Pred Expr
+          | Boolean_Pred Expr
+          | Pair_Pred Expr
           deriving (Eq, Show)
  
 
@@ -111,6 +106,14 @@ fromSExpression (S.Boolean b) = Boolean b
 fromSExpression (S.Real r) = Float r
 fromSExpression (S.Symbol "Else") = Else
 fromSExpression (S.Symbol s) = Var s
+fromSExpression (S.List[S.Symbol "Left", e1]) = Left (fromSExpression e1)
+fromSExpression (S.List[S.Symbol "Right", e1]) = Right (fromSExpression e1)
+-- fromSExpression [S.Dotted, e1, e2] = Pair (fromSExpression e1) (fromSExpression e2)
+fromSExpression (S.List[S.Symbol "Real?", e]) = Real_Pred (fromSExpression e)
+fromSExpression (S.List[S.Symbol "Integer?", e]) = Integer_Pred (fromSExpression e)
+fromSExpression (S.List[S.Symbol "Number?", e]) = Number_Pred (fromSExpression e)
+fromSExpression (S.List[S.Symbol "Boolean?", e]) = Boolean_Pred (fromSExpression e)
+fromSExpression (S.List[S.Symbol "Pair?", e]) = Pair_Pred (fromSExpression e)
 fromSExpression (S.List [S.Symbol "+", e1, e2]) =
     Add (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "-", e1, e2]) =
@@ -451,6 +454,14 @@ toSExpression (Integer i) = S.Integer i
 toSExpression (Boolean b) = S.Boolean b
 toSExpression (Float f) = S.Real f 
 toSExpression (Var v) = S.Symbol v 
+toSExpression (Left x) = S.List[S.Symbol "Left", toSExpression x]
+toSExpression (Right x) = S.List[S.Symbol "Right", toSExpression x]
+toSExpression (Pair x y) = S.Dotted (toSExpression x) (toSExpression y)
+toSExpression (Boolean_Pred x) = S.List[S.Symbol "Boolean?", (toSExpression x)]
+toSExpression (Integer_Pred x) = S.List[S.Symbol "Integer?", (toSExpression x)]
+toSExpression (Real_Pred x) = S.List[S.Symbol "Real?", (toSExpression x)]
+toSExpression (Number_Pred x) = S.List[S.Symbol "Number?", (toSExpression x)]
+toSExpression (Pair_Pred x) = S.List[S.Symbol "Pair?", (toSExpression x)]
 toSExpression (Add x y) = S.List [S.Symbol "+", toSExpression x, toSExpression y]
 toSExpression (Sub x y) = S.List [S.Symbol "-", toSExpression x, toSExpression y]
 toSExpression (Mul x y) = S.List [S.Symbol "*", toSExpression x, toSExpression y]
@@ -726,6 +737,7 @@ valueToSExpression :: ExprEval -> S.Expr
 valueToSExpression (Eval_Integer i) = S.Integer i
 valueToSExpression (Eval_Float r) = S.Real r
 valueToSExpression (Eval_Boolean b) = S.Boolean b
+valueToSExpression (Eval_Pair x y) = S.Dotted (valueToSExpression x) (valueToSExpression y)
 
 test_valueToSExpression = do
     test "toSExpression 42"
