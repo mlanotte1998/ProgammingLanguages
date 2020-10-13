@@ -108,7 +108,7 @@ fromSExpression (S.Symbol "Else") = Else
 fromSExpression (S.Symbol s) = Var s
 fromSExpression (S.List[S.Symbol "Left", e1]) = Left (fromSExpression e1)
 fromSExpression (S.List[S.Symbol "Right", e1]) = Right (fromSExpression e1)
--- fromSExpression [S.Dotted, e1, e2] = Pair (fromSExpression e1) (fromSExpression e2)
+fromSExpression (S.List[S.Symbol "Pair", e1, e2]) = Pair (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List[S.Symbol "Real?", e]) = Real_Pred (fromSExpression e)
 fromSExpression (S.List[S.Symbol "Integer?", e]) = Integer_Pred (fromSExpression e)
 fromSExpression (S.List[S.Symbol "Number?", e]) = Number_Pred (fromSExpression e)
@@ -435,8 +435,34 @@ test_fromSExpression = do
 
     test "fromSExpression Cond with an else" (fromSExpression $ S.List [S.Symbol "Cond", S.List [
      S.List [S.Integer 1, S.Integer 5], S.List [S.Symbol "Else", S.Real 5.5]]]) 
-       (Cond [(Integer 1, Integer 5), (Else, Float 5.5)])                                   
+       (Cond [(Integer 1, Integer 5), (Else, Float 5.5)])    
+    
+    -- Pair tests
 
+    test "fromSExpression Pair test 1" (fromSExpression $ S.List[S.Symbol "Pair", (S.Integer 5) (S.Real 5.5)]) (Pair (Integer 5) (Float 5.5))                       
+
+    test "fromSExpression Pair test 2" (fromSExpression $S.List[S.Symbol "Pair", (S.Boolean True) (S.Real 5.5)]) (Pair (Boolean True) (Float 5.5))  
+
+    test "fromSExpression Pair test 3" (fromSExpression $S.List[S.Symbol "Pair", (S.List[S.Symbol "If", (S.Boolean True), (S.List[S.Symbol "Pair",
+      (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)]) (S.List[S.Symbol "Pair", (S.Real 3.2) (S.Boolean False)])])])
+      (If (Boolean True) (Pair (Add (integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False)))
+
+    -- Left tests
+
+    test "fromSExpression Left test 1" (fromSExpression $S.List[S.Symbol "Left", (S.List[S.Symbol "Pair", (S.Integer 5) (S.Real 5.5)])])
+     (Left (Pair (Integer 5) (Float 5.5)))                       
+
+    test "fromSExpression Left test 2" (fromSExpression $S.List[S.Symbol "Left", (S.List[S.Symbol "Pair", (S.Boolean True) (S.Real 5.5)])])
+     (Left (Pair (Boolean True) (Float 5.5)))  
+
+    test "fromSExpression Left test 3" (fromSExpression $S.List[S.Symbol "Left", S.List[S.Symbol "Pair", (S.List[S.Symbol "If", 
+      (S.Boolean True), (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])]), (S.List[
+      (S.Symbol "Pair"), (S.Real 3.2) (S.Boolean False)])]])
+      (Left (If (Boolean True) (Pair (Add (integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False))))
+
+    test "fromSExpression Left test 4" (fromSExpression $S.List[(S.Symbol "Left"), (S.Integer 1)]) (Left (Integer 1))
+
+    
 -- ================================================================================================
 
 {-
@@ -456,7 +482,7 @@ toSExpression (Float f) = S.Real f
 toSExpression (Var v) = S.Symbol v 
 toSExpression (Left x) = S.List[S.Symbol "Left", toSExpression x]
 toSExpression (Right x) = S.List[S.Symbol "Right", toSExpression x]
-toSExpression (Pair x y) = S.Dotted (toSExpression x) (toSExpression y)
+toSExpression (Pair x y) = S.List[S.Symbol "Pair", (toSExpression x) (toSExpression y)]
 toSExpression (Boolean_Pred x) = S.List[S.Symbol "Boolean?", (toSExpression x)]
 toSExpression (Integer_Pred x) = S.List[S.Symbol "Integer?", (toSExpression x)]
 toSExpression (Real_Pred x) = S.List[S.Symbol "Real?", (toSExpression x)]
