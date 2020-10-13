@@ -1467,6 +1467,7 @@ runSExpression se =
          (Just (Eval_Integer v)) -> Just (valueToSExpression (Eval_Integer v))
          (Just (Eval_Float v)) -> Just (valueToSExpression (Eval_Float v))
          (Just (Eval_Boolean v)) -> Just (valueToSExpression (Eval_Boolean v))
+         (Just (Eval_Pair e1 e2)) -> Just (valueToSExpression (Eval_Pair e1 e2))
          Nothing -> Nothing
 
 test_runSExpression = do
@@ -1776,4 +1777,49 @@ test_runSExpression = do
     test "Not runSExpression complex Test 3" (runSExpression $ S.List [
         S.Symbol "And" , S.List [S.Symbol "Not", S.Boolean True], 
           S.List [S.Symbol "Or", S.Boolean False, S.Boolean True]]) 
-        (Just $ S.Boolean False)    
+        (Just $ S.Boolean False) 
+
+     -- // Pair Tests 
+
+    test "Pair runSExpression Test 1" (runSExpression $ S.List [
+       S.Symbol "Pair", S.Integer 10, S.Real 11.1
+     ]) (Just $ S.Dotted (S.Integer 10) (S.Real 11.1))  
+
+    test "Pair runSExpression Test 2" (runSExpression $ S.List [
+       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+        S.Real 11.1]) 
+        (Just $ S.Dotted (S.Dotted (S.Integer 15) (S.Boolean True)) (S.Real 11.1))   
+
+    test "Pair runSExpression Test 3" (runSExpression $ S.List [
+      S.Symbol "Pair", S.List [S.Symbol "+", S.Boolean False, S.Boolean True],
+      S.Integer 10]) (Nothing)
+
+    -- // Left Tests 
+
+    test "Left runSExpression Test 1" (runSExpression $ S.List [
+      S.Symbol "Left", S.Integer 10]) (Nothing)  
+
+    test "Left runSExpression Test 2" (runSExpression $ S.List [
+      S.Symbol "Left", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+       (Just (S.Real 5.5))    
+
+    test "Left runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Left", 
+      S.List [S.Symbol "Left", S.List [
+       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+        S.Real 11.1]]])
+        (Just $ S.Integer 15)   
+
+    -- // Right Tests 
+
+    test "Right runSExpression Test 1" (runSExpression $ S.List [
+      S.Symbol "Right", S.Integer 10]) (Nothing)  
+
+    test "Right runSExpression Test 2" (runSExpression $ S.List [
+      S.Symbol "Right", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+       (Just (S.Integer 10))    
+
+    test "Right runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Right", 
+      S.List [S.Symbol "Right", S.List [
+       S.Symbol "Pair", S.Real 11.1 , 
+        S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True]]]])
+        (Just $ S.Boolean True)       
