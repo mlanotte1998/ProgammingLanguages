@@ -55,96 +55,76 @@ test_checkFloatEquality = do
 -- |Evaluates the given expression to a value.
 {-
  For Assignment 5: 
- Added Pair, Left, and Right cases for Question 1. 
+ Added Pair, Left, and Right cases for Question 1.
+ Added the five predicate cases for Question 2.  
+ Also fixed up add, sub, mul, div, and let to now account 
+ for the Eval_Pair possibility. For the math operations, code got 
+ simpler since eval boolean, eval pair, and nothing go to nothing,
+ but for let needed to add an actual case. 
 -}
 eval :: Expr -> Maybe ExprEval 
 eval (Integer i) = Just (Eval_Integer i)
 eval (Float d) = Just (Eval_Float d)
 eval (Boolean b) = Just (Eval_Boolean b)
 eval (Var _) = Nothing
-eval (Pair e1 e2) = 
-     case eval e1 of 
-       (Just x) -> case eval e2 of 
-                      Just y -> Just (Eval_Pair x y) 
-                      _ -> Nothing
-       Nothing -> Nothing 
-eval (Left l ) = 
-    case eval l of 
-         Just (Eval_Pair e1 e2) -> Just e1 
-         _ -> Nothing 
-eval (Right l ) = 
-    case eval l of 
-         Just (Eval_Pair e1 e2) -> Just e2
-         _ -> Nothing 
 eval (Add e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) ->
             case eval e2 of
                  Just (Eval_Integer v2) -> Just (Eval_Integer (v1 + v2))
                  Just (Eval_Float v2) -> Just (Eval_Float ((fromInteger v1) + v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
+                 _ -> Nothing
          Just (Eval_Float v1) -> 
             case eval e2 of 
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 + (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 + v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
-         Just (Eval_Boolean _) -> Nothing 
-         Nothing -> Nothing        
+                 _ -> Nothing
+         _ -> Nothing    
 eval (Sub e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) ->
             case eval e2 of
                  Just (Eval_Integer v2) -> Just (Eval_Integer (v1 - v2))
                  Just (Eval_Float v2) -> Just (Eval_Float ((fromInteger v1) - v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
+                 _ -> Nothing
          Just (Eval_Float v1) -> 
             case eval e2 of 
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 - (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 - v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
-         Just (Eval_Boolean _) -> Nothing 
-         Nothing -> Nothing        
+                 _ -> Nothing
+         _ -> Nothing    
 eval (Mul e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) ->
             case eval e2 of
                  Just (Eval_Integer v2) -> Just (Eval_Integer (v1 * v2))
                  Just (Eval_Float v2) -> Just (Eval_Float ((fromInteger v1) * v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
+                 _ -> Nothing
          Just (Eval_Float v1) -> 
             case eval e2 of 
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 * (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 * v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
-         Just (Eval_Boolean _) -> Nothing 
-         Nothing -> Nothing           
+                 _ -> Nothing
+         _ -> Nothing         
 eval (Div e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) ->
             case eval e2 of
                  Just (Eval_Integer v2) -> Just (Eval_Integer (v1 `div` v2))
                  Just (Eval_Float v2) -> Just (Eval_Float ((fromInteger v1) / v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
+                 _ -> Nothing
          Just (Eval_Float v1) -> 
             case eval e2 of 
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 / (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 / v2))
-                 Just (Eval_Boolean _) -> Nothing
-                 Nothing -> Nothing
-         Just (Eval_Boolean _) -> Nothing 
-         Nothing -> Nothing        
+                 _ -> Nothing
+         _ -> Nothing      
 eval (Let x e1 e2) =
     case eval e1 of
          Just (Eval_Integer v1) -> eval (subst x (Eval_Integer v1) e2)
          Just (Eval_Float v1) -> eval (subst x (Eval_Float v1) e2)
          Just (Eval_Boolean v1) -> eval (subst x (Eval_Boolean v1) e2)
+         Just (Eval_Pair v1 v2) -> eval (subst x (Eval_Pair v1 v2) e2)
          Nothing -> Nothing
 -- If eval e1 is true then return e2, if false return e3, else return Nothing because 
 -- did not receive boolean for e1.          
@@ -247,25 +227,50 @@ eval (Equal_To e1 e2) =
              case eval e2 of 
                  Nothing -> Just (Eval_Boolean (True))
                  _ -> Nothing     
-
 eval (Cond x) = (evalTupleListHelper x)  
+-- Pair needs to make sure that both eval e1 and eval e2 are values
+-- otherwise return nothing. 
+eval (Pair e1 e2) = 
+     case eval e1 of 
+       (Just x) -> case eval e2 of 
+                      Just y -> Just (Eval_Pair x y) 
+                      _ -> Nothing
+       Nothing -> Nothing 
+-- Left needs that eval of l to be a pair otherwise there is nothing
+-- to take a left from.        
+eval (Left l ) = 
+    case eval l of 
+         Just (Eval_Pair e1 e2) -> Just e1 
+         _ -> Nothing 
+-- Right needs that eval of l to be a pair otherwise there is nothing
+-- to take a right from.          
+eval (Right l ) = 
+    case eval l of 
+         Just (Eval_Pair e1 e2) -> Just e2
+         _ -> Nothing 
+-- Real_Pred returns true is eval e is a float, otherwise return false.          
 eval (Real_Pred e) = case eval e of 
-                          Just (Eval_Float f) -> Just (Eval_Boolean True)        
+                          Just (Eval_Float _) -> Just (Eval_Boolean True)        
                           _ -> Just (Eval_Boolean False)
+-- Integer_Pred returns true is eval e is a integer, otherwise return false.                          
 eval (Integer_Pred e) = case eval e of 
-                          Just (Eval_Integer f) -> Just (Eval_Boolean True)        
+                          Just (Eval_Integer _) -> Just (Eval_Boolean True)        
                           _ -> Just (Eval_Boolean False)
-eval (Boolean_Pred e) = case eval e of 
-                          Just (Eval_Boolean f) -> Just (Eval_Boolean True)        
-                          _ -> Just (Eval_Boolean False)
+-- Number_Pred returns true is eval e is a float or integer, otherwise return false.
 eval (Number_Pred e) = case eval e of 
-                          Just (Eval_Float f) -> Just (Eval_Boolean True) 
-                          Just (Eval_Integer f) -> Just (Eval_Boolean True)       
+                          Just (Eval_Float _) -> Just (Eval_Boolean True) 
+                          Just (Eval_Integer _) -> Just (Eval_Boolean True)       
                           _ -> Just (Eval_Boolean False)
+-- Boolean_Pred returns true is eval e is a boolean, otherwise return false.                          
+eval (Boolean_Pred e) = case eval e of 
+                          Just (Eval_Boolean _) -> Just (Eval_Boolean True)        
+                          _ -> Just (Eval_Boolean False)               
+-- Pair_Pred returns true is eval e is a pair, otherwise return false.                                     
 eval (Pair_Pred e) = case eval e of 
-                          Just (Eval_Pair f) -> Just (Eval_Boolean True)        
+                          Just (Eval_Pair _ _) -> Just (Eval_Boolean True)        
                           _ -> Just (Eval_Boolean False)                                                                                                        
 
+-- Helper function for eval that handles a cond list 
 evalTupleListHelper :: [(Expr, Expr)] -> Maybe ExprEval
 evalTupleListHelper [] = Nothing 
 evalTupleListHelper [(Else, t2)] = eval t2
@@ -300,496 +305,712 @@ test_evalTupleListHelper = do
                          
 test_eval = do
     -- // Boolean Tests
-    test "Boolean eval True" (eval $ Boolean True) (Just (Eval_Boolean True))
+    test "eval Boolean  True" (eval $ Boolean True) (Just (Eval_Boolean True))
 
-    test "Boolean eval False" (eval $ Boolean False) (Just (Eval_Boolean False))
+    test "eval Boolean False" (eval $ Boolean False) (Just (Eval_Boolean False))
     
-    test "Boolean eval: (+ True 30)" (eval (Add (Boolean True) (Integer 30))) (Nothing)
+    test "eval Boolean: (+ True 30)" (eval (Add (Boolean True) (Integer 30))) (Nothing)
 
-    test "Boolean eval: (let (x (+ 1 False)) (* 4 x))"
+    test "eval Boolean: (let (x (+ 1 False)) (* 4 x))"
        (eval $ Let "x" (Add (Integer 1) (Boolean False)) (Mul (Integer 4) (Var "x")))
        (Nothing)
 
-    test "Boolean eval: (- 30 False)" (eval $ Sub (Integer 30) (Boolean False)) (Nothing)
+    test "eval Boolean: (- 30 False)" (eval $ Sub (Integer 30) (Boolean False)) (Nothing)
 
-    test "Boolean eval: (* True 12)" (eval $ Mul (Boolean True) (Integer 12)) (Nothing)
+    test "eval Boolean: (* True 12)" (eval $ Mul (Boolean True) (Integer 12)) (Nothing)
   
-    test "Boolean eval: (/ False 12)" (eval $ Div (Boolean False) (Integer 12)) (Nothing)
+    test "eval Boolean: (/ False 12)" (eval $ Div (Boolean False) (Integer 12)) (Nothing)
 
-    test "Boolean eval: (* (+ 5 10) (- 5 True))" (eval $ Mul (Add (Integer 5) (Integer 10))
+    test "eval Boolean: (* (+ 5 10) (- 5 True))" (eval $ Mul (Add (Integer 5) (Integer 10))
      (Sub (Integer 5) (Boolean True))) (Nothing)
 
-    test "Boolean eval: nested let" (eval $ Let "y" (Sub (Integer 20) (Integer 8))
+    test "eval Boolean: nested let" (eval $ Let "y" (Sub (Integer 20) (Integer 8))
      (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Boolean False)))) (Nothing)
 
 
     -- // Integer tests
-    test "Integer eval: (+ 12 30)" (eval (Add (Integer 12) (Integer 30))) (Just (Eval_Integer 42))
+    test "eval Integer: (+ 12 30)" (eval (Add (Integer 12) (Integer 30))) (Just (Eval_Integer 42))
 
-    test "Integer eval: (let (x (+1 2)) (* 4 x))"
+    test "eval Integer: (let (x (+1 2)) (* 4 x))"
        (eval $ Let "x" (Add (Integer 1) (Integer 2)) (Mul (Integer 4) (Var "x")))
        (Just (Eval_Integer 12))
 
-    test "Integer eval not assigned Var Test 1" (eval $ Var "x") (Nothing)
+    test "eval Integer not assigned Var Test 1" (eval $ Var "x") (Nothing)
 
-    test "Integer eval not assigned Var Test 2" (eval $ Add (Integer 2) (Var "x")) (Nothing)
+    test "eval Integer not assigned Var Test 2" (eval $ Add (Integer 2) (Var "x")) (Nothing)
 
-    test "Integer eval: simple Integer test" (eval $ Integer 11) (Just (Eval_Integer 11))
+    test "eval Integer: simple Integer test" (eval $ Integer 11) (Just (Eval_Integer 11))
 
-    test "Integer eval: (- 30 12)" (eval $ Sub (Integer 30) (Integer 12)) (Just (Eval_Integer 18))
+    test "eval Integer: (- 30 12)" (eval $ Sub (Integer 30) (Integer 12)) (Just (Eval_Integer 18))
 
-    test "Integer eval: (* 30 12)" (eval $ Mul (Integer 30) (Integer 12)) (Just (Eval_Integer 360))
+    test "eval Integer: (* 30 12)" (eval $ Mul (Integer 30) (Integer 12)) (Just (Eval_Integer 360))
   
-    test "Integer eval: (/ 30 12)" (eval $ Div (Integer 30) (Integer 12)) (Just (Eval_Integer 2))
+    test "eval Integer: (/ 30 12)" (eval $ Div (Integer 30) (Integer 12)) (Just (Eval_Integer 2))
 
-    test "Integer eval: (* (+ 5 10) (- 5 4))" (eval $ Mul (Add (Integer 5) (Integer 10))
+    test "eval Integer: (* (+ 5 10) (- 5 4))" (eval $ Mul (Add (Integer 5) (Integer 10))
      (Sub (Integer 5) (Integer 4))) (Just (Eval_Integer 15))
 
-    test "Integer eval: nested let" (eval $ Let "y" (Sub (Integer 20) (Integer 8))
+    test "eval Integer: nested let" (eval $ Let "y" (Sub (Integer 20) (Integer 8))
      (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Integer 1)))) (Just (Eval_Integer 17))
 
     -- // Float tests 
 
-    test "Float eval: (+ 12.2 30.5)" True (checkFloatEquality (eval (Add (Float 12.2) (Float 30.5))) (Just (Eval_Float 42.7)))
+    test "eval Float: (+ 12.2 30.5)" True (checkFloatEquality (eval (Add (Float 12.2) (Float 30.5))) (Just (Eval_Float 42.7)))
 
-    test "Float eval: (let (x (+1.1 2.2)) (* 4.5 x))"
+    test "eval Float: (let (x (+1.1 2.2)) (* 4.5 x))"
        True 
        (checkFloatEquality(eval $ Let "x" (Add (Float 1.1) (Float 2.2)) (Mul (Float 4.5) (Var "x"))) (Just (Eval_Float 14.85)))
 
-    test "Float eval not assigned Var Test" (eval $ Add (Float 2.5) (Var "x")) (Nothing)
+    test "eval Float not assigned Var Test" (eval $ Add (Float 2.5) (Var "x")) (Nothing)
    
-    test "Float eval: simple Integer test" True (checkFloatEquality (eval $ Float 11.1) (Just (Eval_Float 11.1)))
+    test "eval Float: simple Integer test" True (checkFloatEquality (eval $ Float 11.1) (Just (Eval_Float 11.1)))
 
-    test "Float eval: (- 30.5 12.5)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Float 12.5)) (Just (Eval_Float 18.0)))
+    test "eval Float: (- 30.5 12.5)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Float 12.5)) (Just (Eval_Float 18.0)))
 
-    test "Float eval: (* 30.5 12.1)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Float 12.1)) (Just (Eval_Float 369.05)))
+    test "eval Float: (* 30.5 12.1)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Float 12.1)) (Just (Eval_Float 369.05)))
 
-    test "Float eval: (/ 30.0 12.0)" True (checkFloatEquality (eval $ Div (Float 30.0) (Float 12.0)) (Just (Eval_Float 2.5)))
+    test "eval Float: (/ 30.0 12.0)" True (checkFloatEquality (eval $ Div (Float 30.0) (Float 12.0)) (Just (Eval_Float 2.5)))
 
-    test "Float eval: (* (+ 5.5 10.5) (- 5.4 4.4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Float 10.5))
+    test "eval Float: (* (+ 5.5 10.5) (- 5.4 4.4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Float 10.5))
      (Sub (Float 5.4) (Float 4.4))) (Just (Eval_Float 16.0)))
 
-    test "Float eval: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Float 8.4))
+    test "eval Float: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Float 8.4))
      (Let "x" (Add (Var "y") (Float 4.4)) (Add (Var "x") (Float 1.1)))) (Just (Eval_Float 17.3)))
 
     -- // Mixed tests 
 
-    test "Mixed eval: (+ 12.2 30)" True (checkFloatEquality (eval (Add (Float 12.2) (Integer 30))) (Just (Eval_Float 42.2)))
+    test "eval Mixed: (+ 12.2 30)" True (checkFloatEquality (eval (Add (Float 12.2) (Integer 30))) (Just (Eval_Float 42.2)))
 
-    test "Mixed eval: (let (x (+1.1 20)) (* 4.5 x))" True
+    test "eval Mixed: (let (x (+1.1 20)) (* 4.5 x))" True
        (checkFloatEquality (eval $ Let "x" (Add (Float 1.1) (Integer 20)) (Mul (Integer 4) (Var "x")))
        (Just (Eval_Float 84.4)))
 
-    test "Mixed eval: (- 30.5 12)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Integer 12)) (Just (Eval_Float 18.5)))
+    test "eval Mixed: (- 30.5 12)" True (checkFloatEquality (eval $ Sub (Float 30.5) (Integer 12)) (Just (Eval_Float 18.5)))
 
-    test "Mixed eval: (* 30.5 12)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Integer 12)) (Just (Eval_Float 366.0)))
+    test "eval Mixed: (* 30.5 12)" True (checkFloatEquality (eval $ Mul (Float 30.5) (Integer 12)) (Just (Eval_Float 366.0)))
 
-    test "Mixed eval: (/ 32.5 10)" True (checkFloatEquality (eval $ Div (Float 32.5) (Float 10)) (Just (Eval_Float 3.25)))
+    test "eval Mixed: (/ 32.5 10)" True (checkFloatEquality (eval $ Div (Float 32.5) (Float 10)) (Just (Eval_Float 3.25)))
 
-    test "Mixed eval: (* (+ 5.5 10) (- 5.4 4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Integer 10))
+    test "eval Mixed: (* (+ 5.5 10) (- 5.4 4))" True (checkFloatEquality (eval $ Mul (Add (Float 5.5) (Integer 10))
      (Sub (Integer 5) (Float 4.4))) (Just (Eval_Float 9.299999999999994)))
 
-    test "Mixed eval: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Integer 8))
+    test "eval Mixed: nested let" True (checkFloatEquality (eval $ Let "y" (Sub (Float 20.2) (Integer 8))
      (Let "x" (Add (Var "y") (Integer 4)) (Add (Var "x") (Float 1.1)))) (Just (Eval_Float 17.3)))
 
 
     -- // If tests 
 
-    test "If eval: e1 is True Simple" (eval $ If (Boolean True) (Integer 10) (Float 15.1))  
+    test "eval If: e1 is True Simple" (eval $ If (Boolean True) (Integer 10) (Float 15.1))  
       (Just $ Eval_Integer 10)  
 
-    test "If eval: e1 is False Simple" True (checkFloatEquality (eval $ If (Boolean False) (Integer 10) (Float 15.1))  
+    test "eval If: e1 is False Simple" True (checkFloatEquality (eval $ If (Boolean False) (Integer 10) (Float 15.1))  
       (Just $ Eval_Float 15.1))
 
-    test "If eval: e1 is True Complex" True (checkFloatEquality (eval $ If (Boolean True) (Add (Integer 10) (Float 9.5)) (Float 15.1))
+    test "eval If: e1 is True Complex" True (checkFloatEquality (eval $ If (Boolean True) (Add (Integer 10) (Float 9.5)) (Float 15.1))
       (Just $ Eval_Float 19.5))
 
-    test "If eval: e1 is False Complex" True (checkFloatEquality (eval $ If (Boolean False) (Float 15.1) (Sub (Integer 10) (Float 9.5)))
+    test "eval If: e1 is False Complex" True (checkFloatEquality (eval $ If (Boolean False) (Float 15.1) (Sub (Integer 10) (Float 9.5)))
       (Just $ Eval_Float 0.5))
 
-    test "If eval: e1 is not a boolean" (eval $ If (Div (Integer 5) (Float 5.1)) (Boolean False) (Boolean True))
+    test "eval If: e1 is not a boolean" (eval $ If (Div (Integer 5) (Float 5.1)) (Boolean False) (Boolean True))
         (Nothing)       
 
    -- // And tests 
 
-    test "And eval: e1 not a boolean simple" (eval $ And (Integer 10) (Boolean False)) (Nothing)    
+    test "eval And: e1 not a boolean simple" (eval $ And (Integer 10) (Boolean False)) (Nothing)    
 
-    test "And eval: e1 not a boolean complex" (eval $ And (If (Boolean False) (Float 5.5) 
+    test "eval And: e1 not a boolean complex" (eval $ And (If (Boolean False) (Float 5.5) 
       (Add (Boolean True) (Integer 10))) (Boolean True)) (Nothing)  
 
-    test "And eval: e1 is False simple" (eval $ And (Boolean False) (Integer 3)) (Just (Eval_Boolean False))  
+    test "eval And: e1 is False simple" (eval $ And (Boolean False) (Integer 3)) (Just (Eval_Boolean False))  
 
-    test "And eval: e1 is False complex" (eval $ And (If (Boolean False) (Float 5.5) (Boolean False)) 
+    test "eval And: e1 is False complex" (eval $ And (If (Boolean False) (Float 5.5) (Boolean False)) 
       (Float 3.5)) (Just (Eval_Boolean False))
 
-    test "And eval: e1 is True, e2 is True simple" (eval $ And (Boolean True) (Boolean True)) (Just (Eval_Boolean True))
+    test "eval And: e1 is True, e2 is True simple" (eval $ And (Boolean True) (Boolean True)) (Just (Eval_Boolean True))
 
-    test "And eval: e1 is True, e2 is True complex"  (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
+    test "eval And: e1 is True, e2 is True complex"  (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
       (If (And (Boolean True) (Boolean False)) (Boolean False) (Boolean True))) (Just (Eval_Boolean True))
 
-    test "And eval: e1 is True, e2 is False simple"  (eval $ And (Boolean True) (Boolean False)) (Just (Eval_Boolean False)) 
+    test "eval And: e1 is True, e2 is False simple"  (eval $ And (Boolean True) (Boolean False)) (Just (Eval_Boolean False)) 
 
-    test "And eval: e1 is True, e2 is False complex"  (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
+    test "eval And: e1 is True, e2 is False complex"  (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
       (If (And (Boolean True) (Boolean False)) (Boolean True) (Boolean False))) (Just (Eval_Boolean False))
 
-    test "And eval: e1 is True, e2 is not a boolean simple" (eval $ And (Boolean True) (Integer 10)) (Nothing)  
+    test "eval And: e1 is True, e2 is not a boolean simple" (eval $ And (Boolean True) (Integer 10)) (Nothing)  
 
-    test "And eval: e1 is True, e2 is not a boolean complex" (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
+    test "eval And: e1 is True, e2 is not a boolean complex" (eval $ And (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False)) 
       (If (And (Boolean True) (Boolean True)) (Mul (Float 5.5) (Integer 10)) (Boolean False))) (Nothing)
 
     -- // Or tests 
 
-    test "Or eval: e1 not a boolean, e2 is True simple" (eval $ Or (Integer 10) (Boolean True)) (Just (Eval_Boolean True))    
+    test "eval Or: e1 not a boolean, e2 is True simple" (eval $ Or (Integer 10) (Boolean True)) (Just (Eval_Boolean True))    
 
-    test "Or eval: e1 not a boolean, e2 is False simple" (eval $ Or (Integer 10) (Boolean False)) (Just (Eval_Boolean False)) 
+    test "eval Or: e1 not a boolean, e2 is False simple" (eval $ Or (Integer 10) (Boolean False)) (Just (Eval_Boolean False)) 
     
-    test "Or eval: e1 not a boolean, e2 is not a boolean simple" (eval $ Or (Integer 10) (Float 15.2)) (Nothing)
+    test "eval Or: e1 not a boolean, e2 is not a boolean simple" (eval $ Or (Integer 10) (Float 15.2)) (Nothing)
 
-    test "Or eval: e1 not a boolean, e2 is True complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5))) 
+    test "eval Or: e1 not a boolean, e2 is True complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5))) 
       (If (And (Boolean True) (Boolean True)) (Boolean True) (Boolean False))) (Just (Eval_Boolean True))
 
-    test "Or eval: e1 not a boolean, e2 is False complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5)))
+    test "eval Or: e1 not a boolean, e2 is False complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5)))
       (If (And (Boolean True) (Boolean False)) (Boolean True) (Boolean False))) (Just (Eval_Boolean False))
 
-    test "Or eval: e1 not a boolean, e2 is not a boolean complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5))) 
+    test "eval Or: e1 not a boolean, e2 is not a boolean complex" (eval $ Or (Let "x" (Float 5.5) (Add (Var "x") (Integer 5))) 
       (If (And (Boolean True) (Boolean False)) (Boolean True) (Float 5.5))) (Nothing)  
 
-    test "Or eval: e1 is True, e2 is True simple" (eval $ Or (Boolean True) (Boolean True)) (Just (Eval_Boolean True))
+    test "eval Or: e1 is True, e2 is True simple" (eval $ Or (Boolean True) (Boolean True)) (Just (Eval_Boolean True))
     
-    test "Or eval: e1 is True, e2 is False simple" (eval $ Or (Boolean True) (Boolean False)) (Just (Eval_Boolean True))
+    test "eval Or: e1 is True, e2 is False simple" (eval $ Or (Boolean True) (Boolean False)) (Just (Eval_Boolean True))
 
-    test "Or eval: e1 is True, e2 is not a boolean simple" (eval $ Or (Boolean True) (Integer 15)) (Just (Eval_Boolean True))
+    test "eval Or: e1 is True, e2 is not a boolean simple" (eval $ Or (Boolean True) (Integer 15)) (Just (Eval_Boolean True))
       
-    test "Or eval: e1 is True, e2 is True complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
+    test "eval Or: e1 is True, e2 is True complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
       (And (Boolean True) (Boolean True)))) (Just (Eval_Boolean True))
       
-    test "Or eval: e1 is True, e2 is False complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
+    test "eval Or: e1 is True, e2 is False complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
       (And (Boolean True) (Boolean False)))) (Just (Eval_Boolean True))  
 
-    test "Or eval: e1 is True, e2 is not a boolean complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
+    test "eval Or: e1 is True, e2 is not a boolean complex" (eval $ (Or (Let "x" (Boolean True) (Var "x")) 
       (Div (Float 5.5) (Integer 22)))) (Just (Eval_Boolean True))  
 
-    test "Or eval: e1 is False, e2 is True simple" (eval $ Or (Boolean False) (Boolean True)) (Just (Eval_Boolean True))
+    test "eval Or: e1 is False, e2 is True simple" (eval $ Or (Boolean False) (Boolean True)) (Just (Eval_Boolean True))
     
-    test "Or eval: e1 is False, e2 is False simple" (eval $ Or (Boolean False) (Boolean False)) (Just (Eval_Boolean False))
+    test "eval Or: e1 is False, e2 is False simple" (eval $ Or (Boolean False) (Boolean False)) (Just (Eval_Boolean False))
 
-    test "Or eval: e1 is False, e2 is not a boolean simple" (eval $ Or (Boolean False) (Integer 15)) (Just (Eval_Boolean False))
+    test "eval Or: e1 is False, e2 is not a boolean simple" (eval $ Or (Boolean False) (Integer 15)) (Just (Eval_Boolean False))
       
-    test "Or eval: e1 is False, e2 is True complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
+    test "eval Or: e1 is False, e2 is True complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
       (And (Boolean True) (Boolean True)))) (Just (Eval_Boolean True))
       
-    test "Or eval: e1 is False, e2 is False complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
+    test "eval Or: e1 is False, e2 is False complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
       (And (Boolean True) (Boolean False)))) (Just (Eval_Boolean False))  
 
-    test "Or eval: e1 is False, e2 is not a boolean complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
+    test "eval Or: e1 is False, e2 is not a boolean complex" (eval $ (Or (Let "x" (Boolean False) (Var "x")) 
       (Div (Float 5.5) (Integer 22)))) (Just (Eval_Boolean False))   
       
--- // Not tests 
+    -- // Not tests 
     
-    test "Not eval: e1 True" (eval $ Not (Boolean True)) (Just (Eval_Boolean False)) 
+    test "eval Not: e1 True" (eval $ Not (Boolean True)) (Just (Eval_Boolean False)) 
 
-    test "Not eval: e1 False" (eval $ Not (Boolean False)) (Just (Eval_Boolean True)) 
+    test "eval Not: e1 False" (eval $ Not (Boolean False)) (Just (Eval_Boolean True)) 
     
-    test "Not eval: e1 boolean complex" (eval $ Not (Or (Boolean False) (Boolean True)))
+    test "eval Not: e1 boolean complex" (eval $ Not (Or (Boolean False) (Boolean True)))
       (Just (Eval_Boolean False)) 
 
-    test "Not eval: e1 boolean if complex" (eval $ Not (If (Boolean False)(Boolean True)(Boolean False)))
+    test "eval Not: e1 boolean if complex" (eval $ Not (If (Boolean False)(Boolean True)(Boolean False)))
       (Just (Eval_Boolean True)) 
 
-    test "Not eval: e1 not boolean" (eval $ Not (Integer 10)) (Nothing) 
+    test "eval Not: e1 not boolean" (eval $ Not (Integer 10)) (Nothing) 
     
-    test "Not eval: e1 not boolean complex" (eval $ Not (Add (Integer 5) (Integer 10)))
+    test "eval Not: e1 not boolean complex" (eval $ Not (Add (Integer 5) (Integer 10)))
       (Nothing)  
 
     -- // And, Or, Not complex tests 
 
-    test "Complex boolean operator test 1" (eval $ If (Not (Let "x" (And (Boolean True) (Not (Boolean True))) (Or (Var "x") (Boolean True))))
+    test "eval Complex boolean operator test 1" (eval $ If (Not (Let "x" (And (Boolean True) (Not (Boolean True))) (Or (Var "x") (Boolean True))))
       (Add (Integer 10) (Integer 15)) (Div (Integer 50) (Integer 25))) (Just (Eval_Integer 2)) 
 
-    test "Complex boolean operator test 2" (eval $ If (Not (Let "x" (Or (Boolean False) (Not (Boolean True))) (And (Var "x") (Boolean True))))
+    test "eval Complex boolean operator test 2" (eval $ If (Not (Let "x" (Or (Boolean False) (Not (Boolean True))) (And (Var "x") (Boolean True))))
       (Add (Integer 10) (Integer 15)) (Div (Integer 50) (Integer 25))) (Just (Eval_Integer 25))      
     
     -- // Less_Than Tests 
    
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Integer greater than e1 simple" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Integer greater than e1 simple" 
      (eval $ Less_Than (Integer 5) (Integer 10)) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Integer less than e1 simple" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Integer less than e1 simple" 
      (eval $ Less_Than (Integer 10) (Integer 5)) (Just (Eval_Boolean False))    
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Float greater than e1 simple" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Float greater than e1 simple" 
      (eval $ Less_Than (Integer 5) (Float 10)) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Float less than e1 simple" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Float less than e1 simple" 
      (eval $ Less_Than (Integer 10) (Float 5)) (Just (Eval_Boolean False))     
 
-    test "Less_Than eval: eval e1 is Integer and eval e2 not a numeric type simple" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 not a numeric type simple" 
      (eval $ Less_Than (Integer 5) (Boolean True)) (Nothing)   
 
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Integer greater than e1 complex" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Integer greater than e1 complex" 
      (eval $ Less_Than (Sub (Integer 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Integer less than e1 complex" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Integer less than e1 complex" 
      (eval $ Less_Than (Add (Integer 10) (Integer 20)) (Sub (Integer 5) (Integer  7))) (Just (Eval_Boolean False))    
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Float greater than e1 complex" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Float greater than e1 complex" 
      (eval $ Less_Than (Sub (Integer 5) (Integer  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Integer and eval e2 is Float less than e1 complex" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 is Float less than e1 complex" 
      (eval $ Less_Than (Mul (Integer 5) (Integer  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))     
 
-    test "Less_Than eval: eval e1 is Integer and eval e2 not a numeric type complex" 
+    test "eval Less_Than: eval e1 is Integer and eval e2 not a numeric type complex" 
      (eval $ Less_Than (Integer 5) (And (Boolean True) (Boolean True))) (Nothing) 
 
-    test "Less_Than eval: eval e1 is Float and eval e2 is Integer greater than e1 simple" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Integer greater than e1 simple" 
      (eval $ Less_Than (Float 5) (Integer 10)) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Integer less than e1 simple" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Integer less than e1 simple" 
      (eval $ Less_Than (Float 10) (Integer 5)) (Just (Eval_Boolean False))    
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Float greater than e1 simple" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Float greater than e1 simple" 
      (eval $ Less_Than (Float 5) (Float 10)) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Float less than e1 simple" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Float less than e1 simple" 
      (eval $ Less_Than (Float 10) (Float 5)) (Just (Eval_Boolean False))     
 
-    test "Less_Than eval: eval e1 is Float and eval e2 not a numeric type simple" 
+    test "eval Less_Than: eval e1 is Float and eval e2 not a numeric type simple" 
      (eval $ Less_Than (Float 5) (Boolean True)) (Nothing)   
 
-    test "Less_Than eval: eval e1 is Float and eval e2 is Integer greater than e1 complex" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Integer greater than e1 complex" 
      (eval $ Less_Than (Sub (Float 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Integer less than e1 complex" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Integer less than e1 complex" 
      (eval $ Less_Than (Add (Float 10) (Float 20)) (Sub (Integer 5) (Integer  7))) (Just (Eval_Boolean False))    
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Float greater than e1 complex" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Float greater than e1 complex" 
      (eval $ Less_Than (Sub (Float 5) (Float  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean True))  
      
-    test "Less_Than eval: eval e1 is Float and eval e2 is Float less than e1 complex" 
+    test "eval Less_Than: eval e1 is Float and eval e2 is Float less than e1 complex" 
      (eval $ Less_Than (Mul (Float 5) (Float  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))     
 
-    test "Less_Than eval: eval e1 is Float and eval e2 not a numeric type complex" 
+    test "eval Less_Than: eval e1 is Float and eval e2 not a numeric type complex" 
      (eval $ Less_Than (Float 5) (And (Boolean True) (Boolean True))) (Nothing)     
 
-    test "Less_Than eval: eval e1 is not numeric" 
+    test "eval Less_Than: eval e1 is not numeric" 
      (eval $ Less_Than (Boolean True)(Integer 10)) (Nothing) 
 
-    test "Less_Than eval: eval e1 and eval e2 equal ints should be false" 
+    test "eval Less_Than: eval e1 and eval e2 equal ints should be false" 
      (eval $ Less_Than (Integer 10) (Integer 10)) (Just (Eval_Boolean False))
 
-    test "Less_Than eval: eval e1 and eval e2 equal floats should be false" 
+    test "eval Less_Than: eval e1 and eval e2 equal floats should be false" 
      (eval $ Less_Than (Float 10) (Float 10)) (Just (Eval_Boolean False))  
 
 
     -- // Greater_Than Tests 
    
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Integer greater than e1 simple" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Integer greater than e1 simple" 
      (eval $ Greater_Than (Integer 5) (Integer 10)) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Integer less than e1 simple" 
+    test "evalGreater_Than: eval e1 is Integer and eval e2 is Integer less than e1 simple" 
      (eval $ Greater_Than (Integer 10) (Integer 5)) (Just (Eval_Boolean True))    
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Float greater than e1 simple" 
+    test "evalGreater_Than: eval e1 is Integer and eval e2 is Float greater than e1 simple" 
      (eval $ Greater_Than (Integer 5) (Float 10)) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Float less than e1 simple" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Float less than e1 simple" 
      (eval $ Greater_Than (Integer 10) (Float 5)) (Just (Eval_Boolean True))     
 
-    test "Greater_Than eval: eval e1 is Integer and eval e2 not a numeric type simple" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 not a numeric type simple" 
      (eval $ Greater_Than (Integer 5) (Boolean True)) (Nothing)   
 
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Integer greater than e1 complex" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Integer greater than e1 complex" 
      (eval $ Greater_Than (Sub (Integer 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Integer less than e1 complex" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Integer less than e1 complex" 
      (eval $ Greater_Than (Add (Integer 10) (Integer 20)) (Sub (Integer 5) (Integer  7))) (Just (Eval_Boolean True))    
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Float greater than e1 complex" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Float greater than e1 complex" 
      (eval $ Greater_Than (Sub (Integer 5) (Integer  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Integer and eval e2 is Float less than e1 complex" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 is Float less than e1 complex" 
      (eval $ Greater_Than (Mul (Integer 5) (Integer  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean True))     
 
-    test "Greater_Than eval: eval e1 is Integer and eval e2 not a numeric type complex" 
+    test "eval Greater_Than: eval e1 is Integer and eval e2 not a numeric type complex" 
      (eval $ Greater_Than (Integer 5) (And (Boolean True) (Boolean True))) (Nothing) 
 
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Integer greater than e1 simple" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Integer greater than e1 simple" 
      (eval $ Greater_Than (Float 5) (Integer 10)) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Integer less than e1 simple" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Integer less than e1 simple" 
      (eval $ Greater_Than (Float 10) (Integer 5)) (Just (Eval_Boolean True))    
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Float greater than e1 simple" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Float greater than e1 simple" 
      (eval $ Greater_Than (Float 5) (Float 10)) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Float less than e1 simple" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Float less than e1 simple" 
      (eval $ Greater_Than (Float 10) (Float 5)) (Just (Eval_Boolean True))     
 
-    test "Greater_Than eval: eval e1 is Float and eval e2 not a numeric type simple" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 not a numeric type simple" 
      (eval $ Greater_Than (Float 5) (Boolean True)) (Nothing)   
 
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Integer greater than e1 complex" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Integer greater than e1 complex" 
      (eval $ Greater_Than (Sub (Float 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Integer less than e1 complex" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Integer less than e1 complex" 
      (eval $ Greater_Than (Add (Float 10) (Float 20)) (Sub (Integer 5) (Integer  7))) (Just (Eval_Boolean True))    
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Float greater than e1 complex" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Float greater than e1 complex" 
      (eval $ Greater_Than (Sub (Float 5) (Float  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))  
      
-    test "Greater_Than eval: eval e1 is Float and eval e2 is Float less than e1 complex" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 is Float less than e1 complex" 
      (eval $ Greater_Than (Mul (Float 5) (Float  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean True))     
 
-    test "Greater_Than eval: eval e1 is Float and eval e2 not a numeric type complex" 
+    test "eval Greater_Than: eval e1 is Float and eval e2 not a numeric type complex" 
      (eval $ Greater_Than (Float 5) (And (Boolean True) (Boolean True))) (Nothing)     
 
-    test "Greater_Than eval: eval e1 is not numeric" 
+    test "eval Greater_Than: eval e1 is not numeric" 
      (eval $ Greater_Than (Boolean True)(Integer 10)) (Nothing) 
 
-    test "Greater_Than eval: eval e1 and eval e2 equal ints should be false" 
+    test "eval Greater_Than: eval e1 and eval e2 equal ints should be false" 
      (eval $ Greater_Than (Integer 10) (Integer 10)) (Just (Eval_Boolean False))
 
-    test "Greater_Than eval: eval e1 and eval e2 equal floats should be false" 
+    test "eval Greater_Than: eval e1 and eval e2 equal floats should be false" 
      (eval $ Greater_Than (Float 10) (Float 10)) (Just (Eval_Boolean False)) 
 
 
     -- // Equal_To Tests 
    
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Integer not equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Integer not equal to e1 simple" 
      (eval $ Equal_To (Integer 5) (Integer 10)) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Integer equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Integer equal to e1 simple" 
      (eval $ Equal_To (Integer 5) (Integer 5)) (Just (Eval_Boolean True))    
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Float not equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Float not equal to e1 simple" 
      (eval $ Equal_To (Integer 5) (Float 10)) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Float equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Float equal to e1 simple" 
      (eval $ Equal_To (Integer 5) (Float 5)) (Just (Eval_Boolean True))     
 
-    test "Equal_To eval: eval e1 is Integer and eval e2 not a numeric type simple" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 not a numeric type simple" 
      (eval $ Equal_To (Integer 5) (Boolean True)) (Nothing)   
 
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Integer not equal e1 complex" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Integer not equal e1 complex" 
      (eval $ Equal_To (Sub (Integer 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Integer equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Integer equal to e1 complex" 
      (eval $ Equal_To (Add (Integer 10) (Integer 20)) (Sub (Integer 35) (Integer  5))) (Just (Eval_Boolean True))    
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Float not equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Float not equal to e1 complex" 
      (eval $ Equal_To (Sub (Integer 5) (Integer  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Integer and eval e2 is Float equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 is Float equal to e1 complex" 
      (eval $ Equal_To (Mul (Integer 5) (Integer  7)) (Add (Integer 25) (Float 10))) (Just (Eval_Boolean True))     
 
-    test "Equal_To eval: eval e1 is Integer and eval e2 not a numeric type complex" 
+    test "eval Equal_To: eval e1 is Integer and eval e2 not a numeric type complex" 
      (eval $ Equal_To (Integer 5) (And (Boolean True) (Boolean True))) (Nothing) 
 
-    test "Equal_To eval: eval e1 is Float and eval e2 is Integer not equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Integer not equal to e1 simple" 
      (eval $ Equal_To (Float 5) (Integer 10)) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Integer equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Integer equal to e1 simple" 
      (eval $ Equal_To (Float 10) (Integer 10)) (Just (Eval_Boolean True))    
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Float not equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Float not equal to e1 simple" 
      (eval $ Equal_To (Float 5) (Float 10)) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Float equal to e1 simple" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Float equal to e1 simple" 
      (eval $ Equal_To (Float 10) (Float 10)) (Just (Eval_Boolean True))     
 
-    test "Equal_To eval: eval e1 is Float and eval e2 not a numeric type simple" 
+    test "eval Equal_To: eval e1 is Float and eval e2 not a numeric type simple" 
      (eval $ Equal_To (Float 5) (Boolean True)) (Nothing)   
 
-    test "Equal_To eval: eval e1 is Float and eval e2 is Integer not equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Integer not equal to e1 complex" 
      (eval $ Equal_To (Sub (Float 5) (Integer  7)) (Add (Integer 10) (Integer 20))) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Integer equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Integer equal to e1 complex" 
      (eval $ Equal_To (Add (Float 10) (Float 20)) (Sub (Integer 35) (Integer  5))) (Just (Eval_Boolean True))    
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Float not equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Float not equal to e1 complex" 
      (eval $ Equal_To (Sub (Float 5) (Float  7)) (Add (Integer 5) (Float 10))) (Just (Eval_Boolean False))  
      
-    test "Equal_To eval: eval e1 is Float and eval e2 is Float equal to e1 complex" 
+    test "eval Equal_To: eval e1 is Float and eval e2 is Float equal to e1 complex" 
      (eval $ Equal_To (Mul (Float 5) (Float  7)) (Add (Integer 25) (Float 10))) (Just (Eval_Boolean True))     
 
-    test "Equal_To eval: eval e1 is Float and eval e2 not a numeric type complex" 
+    test "eval Equal_To: eval e1 is Float and eval e2 not a numeric type complex" 
      (eval $ Equal_To (Float 5) (And (Boolean True) (Boolean True))) (Nothing)     
 
-    test "Equal_To eval: eval e1 is a boolean equal to eval e2 also boolean" 
+    test "eval Equal_To: eval e1 is a boolean equal to eval e2 also boolean" 
      (eval $ Equal_To (Boolean True)(Boolean True)) (Just (Eval_Boolean True)) 
 
-    test "Equal_To eval: eval e1 is a boolean not equal to eval e2 also boolean" 
+    test "eval Equal_To: eval e1 is a boolean not equal to eval e2 also boolean" 
      (eval $ Equal_To (Boolean True)(Boolean False)) (Just (Eval_Boolean False))  
 
-    test "Equal_To eval: eval e1 is a Nothing and eval e2 also Nothing" 
+    test "eval Equal_To: eval e1 is a Nothing and eval e2 also Nothing" 
      (eval $ Equal_To (Sub (Integer 5) (Boolean True))(Add (Integer 5) (Boolean False))) (Just (Eval_Boolean True)) 
 
-    test "Equal_To eval: eval e1 is a Nothing  not equal to eval e2 also boolean" 
+    test "eval Equal_To: eval e1 is a Nothing  not equal to eval e2 also boolean" 
      (eval $ Equal_To (Sub (Integer 5) (Boolean True))(Boolean False)) (Nothing)  
 
 
     -- Cond If equality tests 
 
-    test "Cond and If are same test 1" (eval $ If (Boolean True) (Add (Integer 5) (Integer 2)) (Sub (Integer 5) (Integer 2)))
+    test "eval Cond and If are same test 1" (eval $ If (Boolean True) (Add (Integer 5) (Integer 2)) (Sub (Integer 5) (Integer 2)))
      (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2))), (Else, (Sub (Integer 5) (Integer 2)))])  
 
-    test "Cond and If are same test 2" (eval $ If (Boolean False) (Add (Integer 5) (Integer 2)) 
+    test "eval Cond and If are same test 2" (eval $ If (Boolean False) (Add (Integer 5) (Integer 2)) 
      (If (Boolean True) (Sub (Integer 5) (Integer 2)) (Mul (Integer 5) (Integer 2)))) 
        (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), (Boolean True, (Sub (Integer 5) (Integer 2))), 
          (Else, (Mul (Integer 5) (Integer 2)))])
   
     -- // Cond Tests
-    test "Cond eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2)))])
+    test "eval Cond: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2)))])
        (Just (Eval_Integer 7))
 
-    test "Cond eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
         (Boolean True, (Div (Integer 4) (Integer 2)))])
        (Just (Eval_Integer 2))
 
-    test "Cond eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
         (Boolean False, (Div (Integer 4) (Integer 2)))])
        (Nothing)
 
-    test "Cond eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
         (Boolean False, (Div (Integer 4) (Integer 2)))])
        (Nothing)
        
-    test "Cond Else eval: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2))),
+    test "eval Cond: first true" (eval $ Cond [(Boolean True, (Add (Integer 5) (Integer 2))),
         (Else, (Sub (Integer 5) (Integer 2)))])
        (Just (Eval_Integer 7))
 
-    test "Cond Else eval: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: next true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
         (Boolean True, (Div (Integer 4) (Integer 2))), (Else, (Mul (Float 5.1) (Float 2.0)))])
        (Just (Eval_Integer 2))
 
-    test "Cond Else eval: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: no true" (eval $ Cond [(Boolean False, (Add (Integer 5) (Integer 2))), 
         (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.2)])
        (Just (Eval_Float 2.2))
 
-    test "Cond Else eval: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
+    test "eval Cond: not boolean values" (eval $ Cond [(Float 5.1, (Add (Integer 5) (Integer 2))), 
         (Boolean False, (Div (Integer 4) (Integer 2))), (Else, Float 2.1)])
        (Nothing)
 
 
     -- // Pair Tests    
-    -- test "Pair eval "  
+    test "eval Pair: eval e1 and eval e2 are nothing, simple" (eval $ Pair 
+     (Add (Integer 5) (Boolean False)) (Var "x")) (Nothing)  
+
+    test "eval Pair: eval e1 and eval e2 are nothing, complex" (eval $ Pair 
+     (If (Boolean False) (Integer 5) (Div (Var "y") (Float 5.5))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True))))
+       (Nothing) 
+
+    test "eval Pair: eval e1 is not nothing but eval e2 is nothing, simple" (eval $ Pair 
+     (Add (Integer 5) (Float 6.5)) (Var "x")) (Nothing)     
+
+    test "eval Pair: eval e1 is not nothing but eval e2 is nothing, complex" (eval $ Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 10) (Div (Var "x") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True))))
+       (Nothing)  
+
+    test "eval Pair: eval e1 is not nothing but eval e2 is not nothing, simple" (eval $ Pair 
+     (Add (Integer 5) (Float 6.5)) (Let "x" (Boolean False) (Var "x")))
+     (Just (Eval_Pair (Eval_Float 11.5) (Eval_Boolean False)))     
+
+    test "eval Pair: eval e1 is not nothing but eval e2 is not nothing, complex" (eval $ Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 11) (Div (Var "y") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Float 5))))
+       (Just (Eval_Pair (Eval_Float 2) (Eval_Boolean True)))     
+
+    -- // Left Tests    
+    test "eval Left: Expr is nothing, simple" (eval $
+     Left (Add (Boolean True) (Integer 10))) (Nothing)  
+
+    test "eval Left: Expr is nothing, complex" (eval $ Left (Pair 
+     (If (Boolean False) (Integer 5) (Div (Var "y") (Float 5.5))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True)))))
+       (Nothing) 
+
+    test "eval Left: Expr is something but not a pair, simple" (eval $ Left (Boolean False)) 
+     (Nothing)   
+
+    test "eval Left: Expr is something but not a pair, complex" (eval $ Left
+     (Equal_To (Add (Integer 5) (Float 6.5)) (Let "x" (Float 11.5) (Var "x")))) 
+      (Nothing)
+
+    test "eval Left: Expr is a pair that evals to nothing, simple" (eval $ Left 
+     ( Pair (Add (Integer 5) (Boolean False)) (Var "x"))) (Nothing)     
+
+    test "eval Left: Expr is a pair that evals to nothing, simplex" (eval $ Left ( Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 10) (Div (Var "x") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True)))))
+       (Nothing)  
+
+    test "eval Left: Expr is a good pair, simplex" (eval $ Left (Pair 
+     (Add (Integer 5) (Float 6.5)) (Let "x" (Boolean False) (Var "x"))))
+     (Just (Eval_Float 11.5))     
+
+    test "eval Left: Expr is a good pair, complex" (eval $ Left (Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 11) (Div (Var "y") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Float 5)))))
+       (Just (Eval_Float 2))     
+
+    -- // Right Tests    
+    test "eval Right: Expr is nothing, simple" (eval $
+     Left (Add (Boolean True) (Integer 10))) (Nothing)  
+
+    test "eval Right: Expr is nothing, complex" (eval $ Left (Pair 
+     (If (Boolean False) (Integer 5) (Div (Var "y") (Float 5.5))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True)))))
+       (Nothing) 
+
+    test "eval Right: Expr is something but not a pair, simple" (eval $ Right (Boolean False)) 
+     (Nothing)   
+
+    test "eval Right: Expr is something but not a pair, complex" (eval $ Right
+     (Equal_To (Add (Integer 5) (Float 6.5)) (Let "x" (Float 11.5) (Var "x")))) 
+      (Nothing)
+
+    test "eval Right: Expr is a pair that evals to nothing, simple" (eval $ Right 
+     ( Pair (Add (Integer 5) (Boolean False)) (Var "x"))) (Nothing)     
+
+    test "eval Right: Expr is a pair that evals to nothing, simplex" (eval $ Right ( Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 10) (Div (Var "x") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Boolean True)))))
+       (Nothing)  
+
+    test "eval Right: Expr is a good pair, simplex" (eval $ Right (Pair 
+     (Add (Integer 5) (Float 6.5)) (Let "x" (Boolean False) (Var "x"))))
+     (Just (Eval_Boolean False))     
+
+    test "eval Right: Expr is a good pair, complex" (eval $ Right (Pair 
+     (If (Boolean False) (Integer 5) (Let "y" (Integer 11) (Div (Var "y") (Float 5.5)))) 
+      (Let "x" (Boolean True) (Equal_To (Integer 5) (Float 5)))))
+       (Just (Eval_Boolean True))      
+
+    -- // Real_Pred tests 
+    test "eval Real_Pred: Expr is a float simple" (eval $ Real_Pred 
+     (Float 5.5)) (Just (Eval_Boolean True))
+
+    test "eval Real_Pred: Expr is a float complex" (eval $ Real_Pred 
+     (If (Boolean True) (Div (Integer 10) (Float 5.1)) (Integer 10)))
+      (Just (Eval_Boolean True))  
+
+    test "eval Real_Pred: Expr is not a float simple" (eval $ Real_Pred 
+     (Integer 5)) (Just (Eval_Boolean False))
+
+    test "eval Real_Pred: Expr is not a float complex" (eval $ Real_Pred 
+     (If (Boolean True) (Div (Integer 10) (Boolean False)) (Integer 10)))
+      (Just (Eval_Boolean False))      
+
+    -- // Integer_Pred tests 
+    test "eval Integer_Pred: Expr is a integer simple" (eval $ Integer_Pred 
+     (Integer 5)) (Just (Eval_Boolean True))
+
+    test "eval Integer_Pred: Expr is a integer complex" (eval $ Integer_Pred 
+     (If (Boolean True) (Div (Integer 10) (Integer 5)) (Integer 10)))
+      (Just (Eval_Boolean True))  
+
+    test "eval Integer_Pred: Expr is not a integer simple" (eval $ Integer_Pred 
+     (Float 5)) (Just (Eval_Boolean False))
+
+    test "eval Integer_Pred: Expr is not a integer complex" (eval $ Integer_Pred 
+     (If (Boolean True) (Div (Integer 10) (Boolean False)) (Integer 10)))
+      (Just (Eval_Boolean False))     
+
+    -- // Number_Pred tests 
+    test "eval Number_Pred: Expr is a integer simple" (eval $ Number_Pred 
+     (Integer 5)) (Just (Eval_Boolean True))
+
+    test "eval Number_Pred: Expr is a integer complex" (eval $ Number_Pred 
+     (If (Boolean True) (Div (Integer 10) (Integer 5)) (Integer 10)))
+      (Just (Eval_Boolean True))  
+
+    test "eval Number_Pred: Expr is a float simple" (eval $ Number_Pred 
+     (Float 5.5)) (Just (Eval_Boolean True))
+
+    test "eval Number_Pred: Expr is a float complex" (eval $ Number_Pred 
+     (If (Boolean True) (Div (Integer 10) (Float 5.1)) (Integer 10)))
+      (Just (Eval_Boolean True))   
+
+    test "eval Number_Pred: Expr is not a integer or float simple" (eval $ Number_Pred 
+     (Boolean False)) (Just (Eval_Boolean False))
+
+    test "eval Number_Pred: Expr is not a integer or float complex" (eval $ Number_Pred 
+     (If (Boolean True) (Div (Integer 10) (Boolean False)) (Integer 10)))
+      (Just (Eval_Boolean False))     
+
+    -- // Boolean_Pred tests 
+    test "eval Boolean_Pred: Expr is a boolean simple" (eval $ Boolean_Pred 
+     (Boolean False)) (Just (Eval_Boolean True))
+
+    test "eval Boolean_Pred: Expr is a boolean complex" (eval $ Boolean_Pred 
+     (If (Boolean True) (Less_Than (Integer 10) (Integer 5)) (Integer 10)))
+      (Just (Eval_Boolean True))  
+
+    test "eval Boolean_Pred: Expr is not a boolean simple" (eval $ Boolean_Pred 
+     (Float 5)) (Just (Eval_Boolean False))
+
+    test "eval Boolean_Pred: Expr is not a boolean complex" (eval $ Boolean_Pred 
+     (If (Boolean True) (Div (Integer 10) (Boolean False)) (Integer 10)))
+      (Just (Eval_Boolean False))   
+
+    -- // Pair_Pred tests 
+    test "eval Pair_Pred: Expr is a pair simple" (eval $ Pair_Pred 
+     (Pair (Add (Integer 5) (Float 6.5)) (Let "x" (Boolean False) (Var "x"))))
+      (Just (Eval_Boolean True))
+
+    test "eval Pair_Pred: Expr is a pair complex" (eval $ Pair_Pred 
+      (Pair (If (Boolean False) (Integer 5) 
+       (Let "y" (Integer 11) (Div (Var "y") (Float 5.5)))) 
+       (Let "x" (Boolean True) (Equal_To (Integer 5) (Float 5)))))
+      (Just (Eval_Boolean True))        
+
+    test "eval Pair_Pred: Expr is not a pair simple" (eval $ Pair_Pred 
+     (Boolean False)) (Just (Eval_Boolean False))
+
+    test "eval Pair_Pred: Expr is not a pair complex" (eval $ Pair_Pred 
+     (If (Boolean True) (Less_Than (Integer 10) (Integer 5)) (Integer 10)))
+      (Just (Eval_Boolean False))  
+
+    -- // New Eval_Pair tests 
+    test "eval Eval_Pair Add, e1 is pair" (eval $ Add (
+      Pair (Integer 5) (Integer 10)) (Integer 5)) (Nothing)
+
+    test "eval Eval_Pair Add, e2 is pair" (eval $ Add (Integer 5) (
+      Pair (Integer 5) (Integer 10))) (Nothing)  
+
+    test "eval Eval_Pair Add, e1 and e2 are pairs" (eval $ Add (
+      Pair (Integer 5) (Integer 10)) (Pair (Float 5.6) (Boolean False))) (Nothing)   
+
+    test "eval Eval_Pair Sub, e1 is pair" (eval $ Sub (
+      Pair (Integer 5) (Integer 10)) (Integer 5)) (Nothing)
+
+    test "eval Eval_Pair Sub, e2 is pair" (eval $ Sub (Integer 5) (
+      Pair (Integer 5) (Integer 10))) (Nothing)  
+
+    test "eval Eval_Pair Sub, e1 and e2 are pairs" (eval $ Sub (
+      Pair (Integer 5) (Integer 10)) (Pair (Float 5.6) (Boolean False))) (Nothing)    
+
+    test "eval Eval_Pair Mul, e1 is pair" (eval $ Mul (
+      Pair (Integer 5) (Integer 10)) (Integer 5)) (Nothing)
+
+    test "eval Eval_Pair Mul, e2 is pair" (eval $ Mul (Integer 5) (
+      Pair (Integer 5) (Integer 10))) (Nothing)  
+
+    test "eval Eval_Pair Mul, e1 and e2 are pairs" (eval $ Mul (
+      Pair (Integer 5) (Integer 10)) (Pair (Float 5.6) (Boolean False))) (Nothing)    
+
+    test "eval Eval_Pair Div, e1 is pair" (eval $ Div (
+      Pair (Integer 5) (Integer 10)) (Integer 5)) (Nothing)
+
+    test "eval Eval_Pair Div, e2 is pair" (eval $ Div (Integer 5) (
+      Pair (Integer 5) (Integer 10))) (Nothing)  
+
+    test "eval Eval_Pair Div, e1 and e2 are pairs" (eval $ Div (
+      Pair (Integer 5) (Integer 10)) (Pair (Float 5.6) (Boolean False))) (Nothing)      
+
+    test "eval Eval_Pair let" (eval $ Let "x" (
+      Pair (Integer 5) (Float 5.5))
+      (Var "x")) (Just (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5)))
+ 
+         
+   
      
 
 -- |Substitutes the given value for the given variable in the given expression.
 -- Given value can now be either a double or an integer 
 {-
  For Assignment 5: 
- Added Pair, Left, and Right cases for Question 1. 
+ Added Pair, Left, and Right cases for Question 1.
+ this includes a new Eval_Pair into the var case
+ Added all five pred cases for Question 2.  
 -}
 subst :: Variable -> ExprEval -> Expr -> Expr
 subst _ _ (Integer n) = Integer n
 subst _ _ (Float f) = Float f
 subst _ _ (Boolean b) = Boolean b
-subst x v (Var y) | x == y = 
-                      case v of 
-                           Eval_Integer num -> Integer num 
-                           Eval_Float num -> Float num 
-                           Eval_Boolean b-> Boolean b
+subst x v (Var y) | x == y = substVarReplacer v 
                   | otherwise = Var y
 subst x v (Pair e1 e2) = Pair (subst x v e1) (subst x v e2)
 subst x v (Left e1) = Left (subst x v e1)
@@ -809,11 +1030,29 @@ subst x v (Greater_Than e1 e2) = Greater_Than (subst x v e1) (subst x v e2)
 subst x v (Equal_To e1 e2) = Equal_To (subst x v e1) (subst x v e2) 
 subst x v (Cond l) = Cond (substTupleListHelper x v l)    
 subst _ _ (Else) = Else       
-subst x v (Real_Pred e) = Real_Pred (subst x v e1)
-subst x v (Integer_Pred e) = Integer_Pred (subst x v e1)
-subst x v (Boolean_Pred e) = Boolean_Pred (subst x v e1)
-subst x v (Number_Pred e) = Number_Pred (subst x v e1)
-subst x v (Pair_Pred e) = Pair_Pred (subst x v e1)
+subst x v (Real_Pred e) = Real_Pred (subst x v e)
+subst x v (Integer_Pred e) = Integer_Pred (subst x v e)
+subst x v (Boolean_Pred e) = Boolean_Pred (subst x v e)
+subst x v (Number_Pred e) = Number_Pred (subst x v e)
+subst x v (Pair_Pred e) = Pair_Pred (subst x v e)
+
+-- Function for handling substituting a var 
+-- This is needed now that Eval_Pairs exist. 
+substVarReplacer :: ExprEval -> Expr 
+substVarReplacer (Eval_Integer i) = Integer i
+substVarReplacer (Eval_Float f) = Float f 
+substVarReplacer (Eval_Boolean b) = Boolean b 
+substVarReplacer (Eval_Pair l r) = Pair (substVarReplacer l) (substVarReplacer r)
+
+test_substVarReplacer = do 
+    test "substVarReplacer int test" (substVarReplacer $ Eval_Integer 5) (Integer 5)
+    test "substVarReplacer float test" (substVarReplacer $ Eval_Float 5) (Float 5)
+    test "substVarReplacer boolean test" (substVarReplacer $ Eval_Boolean False) (Boolean False)
+    test "substVarReplacer pair test simple" (substVarReplacer $ 
+     Eval_Pair (Eval_Float 5.5) (Eval_Integer 3)) (Pair (Float 5.5) (Integer 3))
+    test "substVarReplacer pair test complex" (substVarReplacer $ 
+     Eval_Pair (Eval_Pair (Eval_Integer 5) (Eval_Boolean True)) (Eval_Boolean False)) 
+     (Pair (Pair (Integer 5) (Boolean True)) (Boolean False))
 
 -- Function that is a helper for subst that handles the Cond case by 
 -- using recursion to call subst on every element in the Cond tuple list.
@@ -1124,6 +1363,9 @@ test_subst = do
                            
     -- Pair tests
 
+    test "subst Pair as sub value" (subst "x" (Eval_Pair (Eval_Integer 10) (Eval_Float 5)) (Var "x"))
+     (Pair (Integer 10) (Float 5))
+
     test "subst Pair in left test" (subst "x" (Eval_Integer 1) (Pair (Var "x") (Float 1.6)))
       (Pair (Integer 1) (Float 1.6))
 
@@ -1158,6 +1400,64 @@ test_subst = do
 
     test "subst Right not pair" (subst "y" (Eval_Float 5.1) (Right (Var "y")))
        (Right (Float 5.1))
+
+    -- // Real_Pred tests 
+    test "subst Real_Pred no subst" (subst "x" (Eval_Integer 5) (Real_Pred 
+     (Float 5.5))) (Real_Pred (Float 5.5))
+
+    test "subst Real_Pred subst simple" (subst "x" (Eval_Integer 5) (Real_Pred 
+     (Var "x"))) (Real_Pred (Integer 5))
+
+    test "subst Real_Pred subst complex" (subst "x" (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5))
+     (Real_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
+      (Real_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))
+
+    -- // Integer_Pred tests 
+    test "subst Integer_Pred no subst" (subst "x" (Eval_Integer 5) (Integer_Pred 
+     (Float 5.5))) (Integer_Pred (Float 5.5))
+
+    test "subst Integer_Pred subst simple" (subst "x" (Eval_Integer 5) (Integer_Pred 
+     (Var "x"))) (Integer_Pred (Integer 5))
+
+    test "subst Integer_Pred subst complex" (subst "x" (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5))
+     (Integer_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
+      (Integer_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))
+
+    -- // Number_Pred tests 
+    test "subst Number_Pred no subst" (subst "x" (Eval_Integer 5) (Number_Pred 
+     (Float 5.5))) (Number_Pred (Float 5.5))
+
+    test "subst Number_Pred subst simple" (subst "x" (Eval_Integer 5) (Number_Pred 
+     (Var "x"))) (Number_Pred (Integer 5))
+
+    test "subst Number_Pred subst complex" (subst "x" (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5))
+     (Number_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
+      (Number_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))      
+
+    -- // Boolean_Pred tests 
+    test "subst Boolean_Pred no subst" (subst "x" (Eval_Integer 5) (Boolean_Pred 
+     (Float 5.5))) (Boolean_Pred (Float 5.5))
+
+    test "subst Boolean_Pred subst simple" (subst "x" (Eval_Integer 5) (Boolean_Pred 
+     (Var "x"))) (Boolean_Pred (Integer 5))
+
+    test "subst Boolean_Pred subst complex" (subst "x" (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5))
+     (Boolean_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
+      (Boolean_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))  
+
+    -- // Pair_Pred tests 
+    test "subst Pair_Pred no subst" (subst "x" (Eval_Integer 5) (Pair_Pred 
+     (Float 5.5))) (Pair_Pred (Float 5.5))
+
+    test "subst Pair_Pred subst simple" (subst "x" (Eval_Integer 5) (Pair_Pred 
+     (Var "x"))) (Pair_Pred (Integer 5))
+
+    test "subst Pair_Pred subst complex" (subst "x" (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5))
+     (Pair_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
+      (Pair_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))   
+   
+
+       
        
 -- |Run the given protoScheme s-expression, returning an s-expression
 -- representation of the result.
@@ -1167,6 +1467,7 @@ runSExpression se =
          (Just (Eval_Integer v)) -> Just (valueToSExpression (Eval_Integer v))
          (Just (Eval_Float v)) -> Just (valueToSExpression (Eval_Float v))
          (Just (Eval_Boolean v)) -> Just (valueToSExpression (Eval_Boolean v))
+         (Just (Eval_Pair e1 e2)) -> Just (valueToSExpression (Eval_Pair e1 e2))
          Nothing -> Nothing
 
 test_runSExpression = do
@@ -1476,4 +1777,49 @@ test_runSExpression = do
     test "Not runSExpression complex Test 3" (runSExpression $ S.List [
         S.Symbol "And" , S.List [S.Symbol "Not", S.Boolean True], 
           S.List [S.Symbol "Or", S.Boolean False, S.Boolean True]]) 
-        (Just $ S.Boolean False)    
+        (Just $ S.Boolean False) 
+
+     -- // Pair Tests 
+
+    test "Pair runSExpression Test 1" (runSExpression $ S.List [
+       S.Symbol "Pair", S.Integer 10, S.Real 11.1
+     ]) (Just $ S.Dotted (S.Integer 10) (S.Real 11.1))  
+
+    test "Pair runSExpression Test 2" (runSExpression $ S.List [
+       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+        S.Real 11.1]) 
+        (Just $ S.Dotted (S.Dotted (S.Integer 15) (S.Boolean True)) (S.Real 11.1))   
+
+    test "Pair runSExpression Test 3" (runSExpression $ S.List [
+      S.Symbol "Pair", S.List [S.Symbol "+", S.Boolean False, S.Boolean True],
+      S.Integer 10]) (Nothing)
+
+    -- // Left Tests 
+
+    test "Left runSExpression Test 1" (runSExpression $ S.List [
+      S.Symbol "Left", S.Integer 10]) (Nothing)  
+
+    test "Left runSExpression Test 2" (runSExpression $ S.List [
+      S.Symbol "Left", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+       (Just (S.Real 5.5))    
+
+    test "Left runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Left", 
+      S.List [S.Symbol "Left", S.List [
+       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+        S.Real 11.1]]])
+        (Just $ S.Integer 15)   
+
+    -- // Right Tests 
+
+    test "Right runSExpression Test 1" (runSExpression $ S.List [
+      S.Symbol "Right", S.Integer 10]) (Nothing)  
+
+    test "Right runSExpression Test 2" (runSExpression $ S.List [
+      S.Symbol "Right", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+       (Just (S.Integer 10))    
+
+    test "Right runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Right", 
+      S.List [S.Symbol "Right", S.List [
+       S.Symbol "Pair", S.Real 11.1 , 
+        S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True]]]])
+        (Just $ S.Boolean True)       
