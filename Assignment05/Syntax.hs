@@ -114,7 +114,29 @@ type Env = Map Variable ExprEval
 
 type GlobalEnv = Map Variable GlobalDef               
  
+--Creates a Program representing the given SExpression
+--Parses SExpression and converts it to the data type Program
+programFromSExpression :: S.Expr -> Program 
+programFromSExpression (S.List[S.Symbol "Program", S.List[S.Symbol "Defun", S.Symbol var1, S.Symbol var2, e1], e2]) = 
+  (Program [Defun var1 var2 (fromSExpression e1)] (fromSExpression e2))
+programFromSExpression (S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol var1, e1], e2]) =
+  (Program [Define var1 (fromSExpression e1)] (fromSExpression e2))
 
+sexpr_ex1 = S.List[S.Symbol "Program", S.List[S.Symbol "Defun", S.Symbol "incr", S.Symbol "x", 
+  S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], S.List[S.Symbol "Call", S.Symbol "incr", 
+    S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.Symbol "Call", S.Symbol "incr", (S.Integer 1)]]]]
+ex_program_1 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
+                 (Call "incr" (Call "incr" (Call "incr" (Integer 1))))
+ex_program_2 = Program [Defun "f" "x" (Add (Var "x") (Var "y"))]
+                 (Let "y" (Integer 10) (Call "f" (Integer 10)))
+ex_program_3 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
+                 (Let "z" (Integer 20) (Call "incr" (Var "z")))
+
+--tests of programFromSExpression Defun
+test_programFromSExpression = do
+    test "programFromSExpression ex1 test" (programFromSExpression sexpr_ex1) (ex_program_1)
+
+   
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
 -- pattern matching tells us that that symbol is not one of the four operation symbols. 
@@ -137,6 +159,7 @@ fromSExpression (S.List[S.Symbol "Integer?", e]) = Integer_Pred (fromSExpression
 fromSExpression (S.List[S.Symbol "Number?", e]) = Number_Pred (fromSExpression e)
 fromSExpression (S.List[S.Symbol "Boolean?", e]) = Boolean_Pred (fromSExpression e)
 fromSExpression (S.List[S.Symbol "Pair?", e]) = Pair_Pred (fromSExpression e)
+fromSExpression (S.List[S.Symbol "Call", S.Symbol x, e]) = Call x (fromSExpression e)
 fromSExpression (S.List [S.Symbol "+", e1, e2]) =
     Add (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "-", e1, e2]) =
@@ -502,7 +525,7 @@ test_fromSExpression = do
     test "fromSExpression Right test 3" (fromSExpression $S.List[S.Symbol "Right", (S.List[(S.Symbol "Pair"),  (S.Integer 4), (S.List[(S.Symbol "+"), (S.Integer 2), (S.Integer 1)])])])
       (Right (Pair (Integer 4) (Add (Integer 2) (Integer 1))))
 
-    test "fromSExpression Right test 4" (fromSExpression $S.List[(S.Symbol "Right"), (S.Integer 1)]) (Left (Integer 1))
+    test "fromSExpression Right test 4" (fromSExpression $S.List[(S.Symbol "Right"), (S.Integer 1)]) (Right (Integer 1))
 
     --Real_Pred tests
 
@@ -592,6 +615,7 @@ toSExpression (Integer_Pred x) = S.List[S.Symbol "Integer?", (toSExpression x)]
 toSExpression (Real_Pred x) = S.List[S.Symbol "Real?", (toSExpression x)]
 toSExpression (Number_Pred x) = S.List[S.Symbol "Number?", (toSExpression x)]
 toSExpression (Pair_Pred x) = S.List[S.Symbol "Pair?", (toSExpression x)]
+toSExpression (Call x e) = S.List[S.Symbol "Call", S.Symbol x, (toSExpression e)]
 toSExpression (Add x y) = S.List [S.Symbol "+", toSExpression x, toSExpression y]
 toSExpression (Sub x y) = S.List [S.Symbol "-", toSExpression x, toSExpression y]
 toSExpression (Mul x y) = S.List [S.Symbol "*", toSExpression x, toSExpression y]

@@ -56,6 +56,61 @@ test_checkFloatEquality = do
 -- ================================================================================================
 
 
+ex_program1 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
+                 (Call "incr" (Call "incr" (Call "incr" (Integer 1))))
+ex_program2 = Program [Defun "f" "x" (Add (Var "x") (Var "y"))]
+                 (Let "y" (Integer 10) (Call "f" (Integer 10)))
+ex_program3 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
+                 (Let "z" (Integer 20) (Call "incr" (Var "z")))
+
+ex_program4 = Program 
+                [ Defun "fact" "n" 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1)))))]
+                (Call "fact" (Integer 5))  
+
+ex_program5 = Program 
+                [ Defun "fact" "n" 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
+                      Defun "incr" "x" (Add (Var "x") (Integer 1))]
+                (Call "incr" (Call "fact" (Integer 5)))        
+
+ex_program6 = Program 
+                [ Defun "fact" "n" 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
+                      Defun "incr" "x" (Add (Var "x") (Integer 1)),
+                      Define "z" (Integer 10)]
+                (Add (Var "z") (Call "incr" (Call "fact" (Integer 5))))   
+
+ex_program7 = Program 
+                [ Defun "fact" "n" 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
+                      Defun "incr" "x" (Add (Var "x") (Integer 1)),
+                      Define "z" (Integer 10),
+                      Define "a" (Boolean False)]
+                (If (Var "a") (Boolean True) (Add (Var "z") (Call "incr" (Call "fact" (Integer 5)))))              
+
+ex_program8 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
+                 (Call "incr" (Call "incr" (Let "incr" (Integer 5) (Var "incr"))))    
+
+ex_program9 = Program [Define "x" (Integer 2)] 
+                 (Add (Var "x") (Let "x" (Integer 1) (Var "x")))    
+
+ex_program10 = Program [Define "x" (Integer 2)] 
+                 (Call "x" (Integer 1))                                                                       
+
+
 evalProgram :: Program -> Maybe ExprEval
 evalProgram (Program globalDefs e) = eval globals empty e
   where 
@@ -75,11 +130,45 @@ test_evalProgram = do
      [Define "x" (Integer 10)] (Var "x"))
      (Just (Eval_Integer 10))  
 
-    test "evalProgram single variable globalDefs and simple expression" (evalProgram $ Program 
-     [Define "x" (Integer 10)] (Var "x"))
-     (Just (Eval_Integer 10))          
+    test "evalProgram multiple variable globalDefs and simple expression" (evalProgram $ Program 
+     [Define "x" (Integer 10), Define "y" (Integer 20)] (Add (Var "y") (Var "x")))
+     (Just (Eval_Integer 30))  
 
+    test "evalProgram multiple of same variable globalDefs and simple expression" (evalProgram $ Program 
+     [Define "x" (Integer 10), Define "x" (Integer 20)] (Add (Var "x") (Var "x")))
+     (Just (Eval_Integer 40))       
 
+    test "evalProgram single function and simple expression 1" (evalProgram ex_program1)  
+     (Just (Eval_Integer 4))  
+
+    test "evalProgram single function and simple expression 2" (evalProgram ex_program2)  
+     (Nothing)  
+
+    test "evalProgram single function and simple expression 3" (evalProgram ex_program3)  
+     (Just (Eval_Integer 21))  
+
+    test "evalProgram single function and simple expression 4" (evalProgram ex_program4)  
+     (Just (Eval_Integer 120))     
+
+    test "evalProgram multiple functions" (evalProgram ex_program5)  
+     (Just (Eval_Integer 121))  
+
+    test "evalProgram multiple functions and a variable" (evalProgram ex_program6)  
+     (Just (Eval_Integer 131)) 
+
+    test "evalProgram multiple functions and multiple variables" (evalProgram ex_program7)  
+     (Just (Eval_Integer 131))  
+
+    test "evalProgram function with same name as let variable" (evalProgram ex_program8)  
+     (Just (Eval_Integer 7))
+
+    test "evalProgram variable with same name as let variable" (evalProgram ex_program9)    
+     (Just (Eval_Integer 3)) 
+
+    test "evalProgram global variable called like a function" (evalProgram ex_program10)
+     (Nothing) 
+
+    
 
  -- ===============================================================================================
 
@@ -100,9 +189,11 @@ eval g m (Integer i) = Just (Eval_Integer i)
 eval g m (Float d) = Just (Eval_Float d)
 eval g m (Boolean b) = Just (Eval_Boolean b)
 eval g m (Var x) =
-    case get g x of
-         Just (Define _ e) -> eval g m e 
-         _ -> Nothing
+    case get m x of
+         Just v -> Just v
+         _ -> case get g x of 
+                   Just (Define _ v) -> eval g m v
+                   _ -> Nothing
 eval g m (Add e1 e2) =
     case eval g m e1 of
          Just (Eval_Integer v1) ->
@@ -158,8 +249,7 @@ eval g m (Div e1 e2) =
 eval g m (Let x e1 e2) =
     case eval g m e1 of
          Just v -> eval g (set m x v) e2
-         Nothing -> Nothing
-
+         Nothing -> (Nothing)
 eval g m (Call f e) =
     case get g f of
          Just (Defun _ x body) ->

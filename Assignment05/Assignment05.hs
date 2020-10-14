@@ -22,6 +22,8 @@ main = do
     Syntax.test_toSExpression
     (print "Test valueToSExpression")
     Syntax.test_valueToSExpression
+    (print "Test programFromSExpression")
+    Syntax.test_programFromSExpression
     (print "Test checkFloatEquality")
     Eval.test_checkFloatEquality
     (print "Test eval and its helper")
