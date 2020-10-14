@@ -1,12 +1,12 @@
 {- |
-Module : Assignment04
+Module : Assignment05
 Description : Assignment 5 submission for CS 4400.
 Copyright : (c) Michael Lanotte
                 Rachel Johanek 
 Maintainer : lanotte.m@northeastern.edu
              johanek.r@northeastern.edu 
 -}
-module Assignment04 where
+module Assignment05 where
 
 
 import Syntax
