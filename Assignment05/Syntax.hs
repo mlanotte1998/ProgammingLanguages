@@ -14,6 +14,8 @@ module Syntax where
 
 import qualified SExpression as S
 
+import Maps (Map, get, set, empty)
+
 import Prelude hiding (Left, Right)
 
 import SimpleTests (test)
@@ -57,6 +59,14 @@ type Variable = String
          | (number? <Expr>)
          | (boolean? <Expr>)
          | (pair? <Expr>)
+         | (<Variable> <Expr> <Expr>*)
+
+
+<GlobalDef> ::= (defun <Variable> (<Variable> <Variable>*) <Expr>)
+              | (define <Variable> <Expr>)
+
+<Program> ::= <GlobalDef>* <Expr>
+
 -}
 
 -- |protoScheme expressions
@@ -79,32 +89,44 @@ data Expr = Integer Integer
           | Less_Than Expr Expr
           | Greater_Than Expr Expr
           | Equal_To Expr Expr
-          | Cond [(Expr, Expr)]
-          | Else 
+          | Cond [(Expr, Expr)] (Maybe Expr)
           | Real_Pred Expr 
           | Integer_Pred Expr
           | Number_Pred Expr
           | Boolean_Pred Expr
           | Pair_Pred Expr
+          | Call Variable Expr
           deriving (Eq, Show)
+
+-- | Program data type which is a sequence of global definitions, followed by a single expression
+data Program = Program [GlobalDef] Expr
+             deriving (Eq, Show)
+-- | GlobalDef data type which can be either a function definition, introduced using defun, or
+--    a global variable definition, introduced using define
+data GlobalDef = Defun Variable Variable Expr
+               | Define Variable Expr
+               deriving (Eq, Show)
+
+
+-- |Environments are maps from Variables to values (Integers)
+type Env = Map Variable ExprEval
+
+type GlobalEnv = Map Variable GlobalDef               
  
 
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
 -- pattern matching tells us that that symbol is not one of the four operation symbols. 
 {-
-  For Assignment 4:
-  Added S.Boolean case for part 1
-  Added If case for part 2
-  Added And, Or, and Not cases for part 3
-  Added Less_Than, Greater_Than, and Equal for part 4
-  Added Cond and else case along with a helper for the tuple lists for part 5. 
+  For Assignment 5:
+  Added pair, left, and right cases for question 1
+  Added predicated for question 2
+  Also fixed up Cond/Else case to handle new representation with the Maybe Expr for the Else. 
 -}
 fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Integer i
 fromSExpression (S.Boolean b) = Boolean b
 fromSExpression (S.Real r) = Float r
-fromSExpression (S.Symbol "Else") = Else
 fromSExpression (S.Symbol s) = Var s
 fromSExpression (S.List[S.Symbol "Left", e1]) = Left (fromSExpression e1)
 fromSExpression (S.List[S.Symbol "Right", e1]) = Right (fromSExpression e1)
@@ -138,14 +160,19 @@ fromSExpression (S.List [S.Symbol "Greater_Than", e1, e2]) =
     Greater_Than (fromSExpression e1) (fromSExpression e2)  
 fromSExpression (S.List [S.Symbol "Equal_To", e1, e2]) = 
     Equal_To (fromSExpression e1) (fromSExpression e2)     
-fromSExpression (S.List [S.Symbol "Cond", S.List x]) = 
-    Cond (fromSExpressionTupleListHelper x)    
+fromSExpression (S.List [S.Symbol "Cond", S.List x, e]) = 
+    Cond (fromSExpressionTupleListHelper x)  (handleElse e) 
+        where 
+            handleElse :: S.Expr -> Maybe Expr 
+            handleElse (S.Symbol "Nothing") = Nothing 
+            handleElse e = Just (fromSExpression e)
+
 
 -- Function that assists the fromSExpression function by handling a list of 
 -- the SExpr version of Expr tuples (Lists of two elements are the tuples)    
 fromSExpressionTupleListHelper :: [S.Expr] -> [(Expr, Expr)] 
 fromSExpressionTupleListHelper [] =  [] 
-fromSExpressionTupleListHelper (S.List [t1, t2]:xs) = ((fromSExpression t1), (fromSExpression t2)) : fromSExpressionTupleListHelper xs       
+fromSExpressionTupleListHelper (S.List [t1, t2]:xs) = ((fromSExpression t1), (fromSExpression t2)) : fromSExpressionTupleListHelper xs     
 
 -- Test that the helper function works correctly. 
 test_fromSExpressionTupleListHelper = do 
@@ -158,8 +185,8 @@ test_fromSExpressionTupleListHelper = do
      [(Integer 1, Integer 5), (Boolean True, Float 5.5)]
 
     test "fromSExpressionTupleHelper complex test 3" 
-     (fromSExpressionTupleListHelper [S.List [S.Integer 1, S.Integer 5], S.List [S.Symbol "Else", S.Real 5.5]]) 
-     [(Integer 1, Integer 5), (Else, Float 5.5)]   
+     (fromSExpressionTupleListHelper [S.List [S.Integer 1, S.Integer 5]]) 
+     [(Integer 1, Integer 5)]   
 
 test_fromSExpression = do
     
@@ -424,19 +451,21 @@ test_fromSExpression = do
      (Equal_To (If (Boolean True) (Boolean True) (Boolean False)) (Let "v" (Float 6.3) (Float 6.3)))    
      
     -- Cond tests 
-    test "fromSExpression Cond  basic test" (fromSExpression $ S.List [S.Symbol "Cond", S.List []]) (Cond []) 
+    test "fromSExpression Cond  basic test" (fromSExpression $ S.List [S.Symbol "Cond", S.List [], S.Symbol "Nothing"]) (Cond [] Nothing) 
 
-    test "fromSExpression Cond complex test 1" (fromSExpression $ S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Integer 5]]]) 
-     (Cond [(Integer 1, Integer 5)]) 
+    test "fromSExpression Cond complex test 1" (fromSExpression $ S.List 
+     [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Integer 5]], S.Symbol "Nothing"]) 
+     (Cond [(Integer 1, Integer 5)] Nothing) 
 
     test "fromSExpression Cond complex test 2" (fromSExpression $ S.List [S.Symbol "Cond", S.List [
-     S.List [S.Integer 1, S.Integer 5], S.List [S.Boolean True, S.Real 5.5]]]) 
-       (Cond [(Integer 1, Integer 5), (Boolean True, Float 5.5)])
+     S.List [S.Integer 1, S.Integer 5], S.List [S.Boolean True, S.Real 5.5]], S.Symbol "Nothing"]) 
+       (Cond [(Integer 1, Integer 5), (Boolean True, Float 5.5)] Nothing)
 
     test "fromSExpression Cond with an else" (fromSExpression $ S.List [S.Symbol "Cond", S.List [
-     S.List [S.Integer 1, S.Integer 5], S.List [S.Symbol "Else", S.Real 5.5]]]) 
-       (Cond [(Integer 1, Integer 5), (Else, Float 5.5)])    
+     S.List [S.Integer 1, S.Integer 5]], (S.Real 5.5)]) 
+       (Cond [(Integer 1, Integer 5)] (Just (Float 5.5)))    
     
+    {- 
     -- Pair tests
 
     test "fromSExpression Pair test 1" (fromSExpression $ S.List[S.Symbol "Pair", (S.Integer 5) (S.Real 5.5)]) (Pair (Integer 5) (Float 5.5))                       
@@ -445,7 +474,7 @@ test_fromSExpression = do
 
     test "fromSExpression Pair test 3" (fromSExpression $S.List[S.Symbol "Pair", (S.List[S.Symbol "If", (S.Boolean True), (S.List[S.Symbol "Pair",
       (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)]) (S.List[S.Symbol "Pair", (S.Real 3.2) (S.Boolean False)])])])
-      (If (Boolean True) (Pair (Add (integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False)))
+      (If (Boolean True) (Pair (Add (Integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False)))
 
     -- Left tests
 
@@ -458,9 +487,11 @@ test_fromSExpression = do
     test "fromSExpression Left test 3" (fromSExpression $S.List[S.Symbol "Left", S.List[S.Symbol "Pair", (S.List[S.Symbol "If", 
       (S.Boolean True), (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])]), (S.List[
       (S.Symbol "Pair"), (S.Real 3.2) (S.Boolean False)])]])
-      (Left (If (Boolean True) (Pair (Add (integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False))))
+      (Left (If (Boolean True) (Pair (Add (Integer 2)(Integer 1)) (Integer 4)) (Pair (Float 3.2) (Boolean False))))
 
     test "fromSExpression Left test 4" (fromSExpression $S.List[(S.Symbol "Left"), (S.Integer 1)]) (Left (Integer 1))
+
+    -}
 
     
 -- ================================================================================================
@@ -482,7 +513,7 @@ toSExpression (Float f) = S.Real f
 toSExpression (Var v) = S.Symbol v 
 toSExpression (Left x) = S.List[S.Symbol "Left", toSExpression x]
 toSExpression (Right x) = S.List[S.Symbol "Right", toSExpression x]
-toSExpression (Pair x y) = S.List[S.Symbol "Pair", (toSExpression x) (toSExpression y)]
+toSExpression (Pair x y) = S.List[S.Symbol "Pair", (toSExpression x), (toSExpression y)]
 toSExpression (Boolean_Pred x) = S.List[S.Symbol "Boolean?", (toSExpression x)]
 toSExpression (Integer_Pred x) = S.List[S.Symbol "Integer?", (toSExpression x)]
 toSExpression (Real_Pred x) = S.List[S.Symbol "Real?", (toSExpression x)]
@@ -500,8 +531,9 @@ toSExpression (Not x) = S.List [S.Symbol "Not", toSExpression x]
 toSExpression (Less_Than x y) = S.List [S.Symbol "Less_Than", toSExpression x, toSExpression y]
 toSExpression (Greater_Than x y) = S.List [S.Symbol "Greater_Than", toSExpression x, toSExpression y]
 toSExpression (Equal_To x y) = S.List [S.Symbol "Equal_To", toSExpression x, toSExpression y]
-toSExpression (Cond x) = S.List [S.Symbol "Cond", S.List (toSExpressionTupleListHelper x)]
-toSExpression (Else) = S.Symbol "Else"
+toSExpression (Cond x Nothing) = S.List [S.Symbol "Cond", S.List (toSExpressionTupleListHelper x), S.Symbol "Nothing"]
+toSExpression (Cond x (Just e)) = S.List [S.Symbol "Cond", 
+ S.List (toSExpressionTupleListHelper x), (toSExpression e)]
 
 -- Function that assists the toSExpression function by handling a list of 
 -- the Expr tuples and converting them to a list of S.Expr where a S.List [t1, t1] is how to represent a tuple.  
@@ -520,8 +552,8 @@ test_toSExpressionTupleListHelper = do
       [S.List [S.Integer 1, S.Real 5.6], S.List [S.Boolean False, S.Boolean True]] 
 
     test "toSExpressionTupleListHelper complex test 3" (toSExpressionTupleListHelper 
-     [(Integer 1, Float 5.6), (Else , Boolean True)]) 
-      [S.List [S.Integer 1, S.Real 5.6], S.List [S.Symbol "Else", S.Boolean True]]   
+     [(Integer 1, Float 5.6)]) 
+      [S.List [S.Integer 1, S.Real 5.6]]   
 
 test_toSExpression = do
 
@@ -746,16 +778,17 @@ test_toSExpression = do
 
   -- Cond Tests 
   
-    test "toSExpression Cond basic test" (toSExpression (Cond [])) (S.List [S.Symbol "Cond", S.List []])
+    test "toSExpression Cond basic test" (toSExpression (Cond [] Nothing)) (S.List [S.Symbol "Cond", S.List [], S.Symbol "Nothing"])
 
-    test "toSExpression Cond complex test 1" (toSExpression (Cond [(Integer 1, Float 5.6)])) 
-     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6]]])
+    test "toSExpression Cond complex test 1" (toSExpression (Cond [(Integer 1, Float 5.6)] Nothing)) 
+     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6]], S.Symbol "Nothing"])
 
-    test "toSExpression Cond complex test 2" (toSExpression (Cond [(Integer 1, Float 5.6), (Boolean True, Integer 20)])) 
-     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6], S.List [S.Boolean True, S.Integer 20]]]) 
+    test "toSExpression Cond complex test 2" (toSExpression (Cond [(Integer 1, Float 5.6), (Boolean True, Integer 20)] Nothing)) 
+     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6], S.List [S.Boolean True, S.Integer 20]], 
+       S.Symbol "Nothing"]) 
 
-    test "toSExpression Cond with an else" (toSExpression (Cond [(Integer 1, Float 5.6), (Else, Integer 20)])) 
-     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6], S.List [S.Symbol "Else", S.Integer 20]]])          
+    test "toSExpression Cond with an else" (toSExpression (Cond [(Integer 1, Float 5.6)] (Just (Integer 20)))) 
+     (S.List [S.Symbol "Cond", S.List [S.List [S.Integer 1, S.Real 5.6]], S.Integer 20])          
 
 
 -- |Convert an evaluation result into s-expression

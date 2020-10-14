@@ -32,3 +32,5 @@ main = do
     Eval.test_subst 
     (print "Test runSExpression")
     Eval.test_runSExpression
+    (print "Test evalProgram")
+    Eval.test_evalProgram 
