@@ -117,6 +117,7 @@ type GlobalEnv = Map Variable GlobalDef
 --Creates a Program representing the given SExpression
 --Parses SExpression and converts it to the data type Program
 programFromSExpression :: S.Expr -> Program 
+programFromSExpression (S.List[S.Symbol "Program", S.List [], e]) = Program [] (fromSExpression e)
 programFromSExpression (S.List[S.Symbol "Program", S.List[S.Symbol "Defun", S.Symbol var1, S.Symbol var2, e1], e2]) = 
   (Program [Defun var1 var2 (fromSExpression e1)] (fromSExpression e2))
 programFromSExpression (S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol var1, e1], e2]) =

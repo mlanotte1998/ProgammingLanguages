@@ -168,6 +168,23 @@ test_evalProgram = do
     test "evalProgram global variable called like a function" (evalProgram ex_program10)
      (Nothing) 
 
+    test "evalProgram ex1 from pdf"(evalProgram (Program [
+      Define "x" (Integer 32)] (Let "x" (Float 3.14) (Var "x")))) 
+       (Just (Eval_Float 3.14)) 
+
+    test "evalProgram ex2 from pdf"(evalProgram (Program [
+      Define "x" (Integer 32)] (Let "x" (Mul (Var "x") (Integer 2)) (Var "x")))) 
+       (Just (Eval_Integer 64))   
+
+    test "evalProgram ex3 from pdf"(evalProgram (Program [
+      Define "x" (Integer 32)] (Let "y" (Mul (Var "x") (Integer 2)) (Var "x")))) 
+       (Just (Eval_Integer 32))    
+
+    test "evalProgram ex4 from pdf"(evalProgram (Program [
+      Define "x" (Integer 32)] (Let "y" (Mul (Var "x") (Integer 2)) (Var "z")))) 
+       (Nothing)   
+   
+
     
 
  -- ===============================================================================================
@@ -183,6 +200,8 @@ test_evalProgram = do
  but for let needed to add an actual case. 
  Also fixed Cond/Else stuff now that we use a Maybe Expr for the else case
  Rather than having an Else Expr type. 
+
+ Added Call and changed let to take into account environment / program impl. 
 -}
 eval :: GlobalEnv -> Env -> Expr -> Maybe ExprEval 
 eval g m (Integer i) = Just (Eval_Integer i)
@@ -245,7 +264,9 @@ eval g m (Div e1 e2) =
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 / (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 / v2))
                  _ -> Nothing
-         _ -> Nothing      
+         _ -> Nothing 
+
+-- Let changed to not use subst anymore, set the variable in the env.      
 eval g m (Let x e1 e2) =
     case eval g m e1 of
          Just v -> eval g (set m x v) e2
@@ -254,7 +275,9 @@ eval g m (Call f e) =
     case get g f of
          Just (Defun _ x body) ->
              case eval g m e of 
-                  Just v -> eval g (set empty x v) body                       
+                  Just v -> eval g (set empty x v) body  
+                  _ -> Nothing
+         _ -> Nothing                               
 -- If eval e1 is true then return e2, if false return e3, else return Nothing because 
 -- did not receive boolean for e1.          
 eval g m (If e1 e2 e3) = 
@@ -288,14 +311,12 @@ eval g m (Or e1 e2) =
             case eval g m e2 of 
               Just (Eval_Boolean b) -> Just (Eval_Boolean b)
               _ -> Nothing 
-
 -- Not changes eval of e1 true to false, false to true and anything else to Nothing.         
 eval g m (Not e) = 
      case eval g m e of
           Just (Eval_Boolean True) -> Just (Eval_Boolean False)
           Just (Eval_Boolean False) -> Just (Eval_Boolean True)      
           _ -> Nothing                   
-
 -- Less than checks what eval e1 is and then compares it with eval e2. 
 -- If eval e1 is a integer, and eval e2 is an integer or float then compare with the < 
 -- otherwise return nothing. If eval e1 is a float then do the same thing. Just need 
@@ -314,7 +335,6 @@ eval g m (Less_Than e1 e2) =
                  Just (Eval_Float v2) -> Just (Eval_Boolean (v1 < v2))
                  _ -> Nothing
          _ -> Nothing  
-
 -- Greater than checks what eval e1 is and then compares it with eval e2. 
 -- If eval e1 is a integer, and eval e2 is an integer or float then compare with the >
 -- otherwise return nothing. If eval e1 is a float then do the same thing. Just need 
@@ -333,7 +353,6 @@ eval g m (Greater_Than e1 e2) =
                  Just (Eval_Float v2) -> Just (Eval_Boolean (v1 > v2))
                  _ -> Nothing
          _ -> Nothing 
-
 -- Equals works similarly to less than and greater than for eval e1 being an Integer or Float. 
 -- But now can check booleans and also if both eval e1 and eval e2 are nothing then return true. 
 eval g m (Equal_To e1 e2) =
@@ -1129,6 +1148,22 @@ test_eval = do
     test "eval Eval_Pair let" (eval empty empty ( Let "x" (
       Pair (Integer 5) (Float 5.5))
       (Var "x"))) (Just (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5)))
+
+    -- // Tests for call 
+    test "eval Call: call with no function known" (eval empty empty (Call "hello" (Integer 10)))
+     (Nothing)  
+
+    test "eval Call: call with a variable of same name in env" (eval empty [("hello", (Eval_Integer 10))] (Call "hello" (Integer 10)))
+     (Nothing)  
+
+    test "eval Call: call with a variable of same name in globalenv" (eval [("hello", (Define "hello" $ Integer 10))] empty (Call "hello" (Integer 10)))
+     (Nothing)   
+
+    test "eval Call: call with a function of same name" (eval [("hello", (Defun "hello" "x" (Var "x")))] 
+     empty (Call "hello" (Integer 10)))  (Just (Eval_Integer 10))
+
+    test "eval Call: call with a function of same name with nothing input" (eval [("hello", (Defun "hello" "x" (Var "x")))] 
+     empty (Call "hello" (Add (Boolean False) (Integer 10))))  (Nothing)  
  
          
    
@@ -1597,14 +1632,28 @@ test_subst = do
        
 -- |Run the given protoScheme s-expression, returning an s-expression
 -- representation of the result.
+{-
+  Added in check for if the S.Expr is a program or not. 
+    If it is a program then do the evalProgram, otherwise do the normal eval 
+-}
 runSExpression :: S.Expr -> Maybe S.Expr
 runSExpression se =
-    case eval empty empty (fromSExpression se) of
+    case se of 
+      (S.List[S.Symbol "Program", S.List defs, e]) -> 
+        case evalProgram (programFromSExpression se) of
          (Just (Eval_Integer v)) -> Just (valueToSExpression (Eval_Integer v))
          (Just (Eval_Float v)) -> Just (valueToSExpression (Eval_Float v))
          (Just (Eval_Boolean v)) -> Just (valueToSExpression (Eval_Boolean v))
          (Just (Eval_Pair e1 e2)) -> Just (valueToSExpression (Eval_Pair e1 e2))
          Nothing -> Nothing
+      _ -> 
+        case eval empty empty (fromSExpression se) of
+         (Just (Eval_Integer v)) -> Just (valueToSExpression (Eval_Integer v))
+         (Just (Eval_Float v)) -> Just (valueToSExpression (Eval_Float v))
+         (Just (Eval_Boolean v)) -> Just (valueToSExpression (Eval_Boolean v))
+         (Just (Eval_Pair e1 e2)) -> Just (valueToSExpression (Eval_Pair e1 e2))
+         Nothing -> Nothing   
+    
 
 test_runSExpression = do
 
@@ -1959,4 +2008,75 @@ test_runSExpression = do
       S.List [S.Symbol "Right", S.List [
        S.Symbol "Pair", S.Real 11.1 , 
         S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True]]]])
-        (Just $ S.Boolean True)       
+        (Just $ S.Boolean True)     
+
+    --Real_Pred tests
+
+    test "Real? runSExpression test  1" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Integer 1)]) (Just $ S.Boolean False)
+
+    test "Real? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Real 1.0)]) (Just $ S.Boolean True)
+    
+    test "Real? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    
+    test "Real? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Real?"), (S.List[S.Symbol "Right", 
+     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+     (Just $ S.Boolean False)
+    
+     --Integer_Pred tests
+
+    test "Integer? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Integer 1)]) (Just $ S.Boolean True)
+
+    test "Integer? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    
+    test "Integer? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    
+    test "Integer? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.List[S.Symbol "Right", 
+     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+     (Just $ S.Boolean True)
+
+    --Number_Pred tests
+
+    test "Number? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Integer 1)]) (Just $ S.Boolean True)
+
+    test "Number? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Real 1.0)]) (Just $ S.Boolean True)
+    
+    test "Number? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    
+    test "Number? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Number?"), (S.List[S.Symbol "Right", 
+     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+     (Just $ S.Boolean True)
+
+    --Boolean_Pred tests
+
+    test "Boolean? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Integer 1)]) (Just $ S.Boolean False)
+
+    test "Boolean? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    
+    test "Boolean? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Boolean True)]) (Just $ S.Boolean True) 
+    
+    test "Boolean? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.List[S.Symbol "Right", 
+     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+     (Just $ S.Boolean False)
+
+    --Pair_Pred tests
+
+    test "Pair? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Integer 1)]) (Just $ S.Boolean False)
+
+    test "Pair? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    
+    test "Pair? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    
+    test "Pair? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.List[S.Symbol "Right", 
+     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+     (Just $ S.Boolean False)
+
+    test "Pair? runSExpression test 5" (runSExpression $ S.List[S.Symbol "Pair?", S.List[S.Symbol "Pair", (S.Integer 1), (S.Integer 2)]])
+     (Just $ S.Boolean True)    
+
+    -- Program tests 
+    test "Program runSExpression test 1" (runSExpression $ S.List[S.Symbol "Program", S.List[S.Symbol "Defun", S.Symbol "incr", S.Symbol "x", 
+     S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], S.List[S.Symbol "Call", S.Symbol "incr", 
+     S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.Symbol "Call", S.Symbol "incr", (S.Integer 1)]]]]) 
+     (Just $ S.Integer 4)
+
+     
