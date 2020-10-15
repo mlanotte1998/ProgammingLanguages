@@ -56,61 +56,98 @@ test_checkFloatEquality = do
 -- ================================================================================================
 
 
-ex_program1 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
-                 (Call "incr" (Call "incr" (Call "incr" (Integer 1))))
-ex_program2 = Program [Defun "f" "x" (Add (Var "x") (Var "y"))]
-                 (Let "y" (Integer 10) (Call "f" (Integer 10)))
-ex_program3 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
-                 (Let "z" (Integer 20) (Call "incr" (Var "z")))
+ex_program1 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
+                 (Call "incr" [(Call "incr" [(Call "incr" [(Integer 1)])])])
+ex_program2 = Program [Defun "f" ("x", []) (Add (Var "x") (Var "y"))]
+                 (Let "y" (Integer 10) (Call "f" [(Integer 10)]))
+ex_program3 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
+                 (Let "z" (Integer 20) (Call "incr" [(Var "z")]))
 
 ex_program4 = Program 
-                [ Defun "fact" "n" 
+                [ Defun "fact" ("n", []) 
                     (If  
                       (Equal_To (Integer 0) (Var "n"))
                       (Integer 1) 
-                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1)))))]
-                (Call "fact" (Integer 5))  
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))])))]
+                (Call "fact" [(Integer 5)])  
 
 ex_program5 = Program 
-                [ Defun "fact" "n" 
+                [ Defun "fact" ("n", []) 
                     (If  
                       (Equal_To (Integer 0) (Var "n"))
                       (Integer 1) 
-                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
-                      Defun "incr" "x" (Add (Var "x") (Integer 1))]
-                (Call "incr" (Call "fact" (Integer 5)))        
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "incr" ("x", []) (Add (Var "x") (Integer 1))]
+                (Call "incr" [(Call "fact" [(Integer 5)])])        
 
 ex_program6 = Program 
-                [ Defun "fact" "n" 
+                [ Defun "fact" ("n", []) 
                     (If  
                       (Equal_To (Integer 0) (Var "n"))
                       (Integer 1) 
-                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
-                      Defun "incr" "x" (Add (Var "x") (Integer 1)),
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "incr" ("x", []) (Add (Var "x") (Integer 1)),
                       Define "z" (Integer 10)]
-                (Add (Var "z") (Call "incr" (Call "fact" (Integer 5))))   
+                (Add (Var "z") (Call "incr" [(Call "fact" [(Integer 5)])]))   
 
 ex_program7 = Program 
-                [ Defun "fact" "n" 
+                [ Defun "fact" ("n", []) 
                     (If  
                       (Equal_To (Integer 0) (Var "n"))
                       (Integer 1) 
-                      (Mul (Var "n") (Call "fact" (Sub (Var "n") (Integer 1))))), 
-                      Defun "incr" "x" (Add (Var "x") (Integer 1)),
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "incr" ("x",[]) (Add (Var "x") (Integer 1)),
                       Define "z" (Integer 10),
                       Define "a" (Boolean False)]
-                (If (Var "a") (Boolean True) (Add (Var "z") (Call "incr" (Call "fact" (Integer 5)))))              
+                (If (Var "a") (Boolean True) (Add (Var "z") (Call "incr" [(Call "fact" [(Integer 5)])])))              
 
-ex_program8 = Program [Defun "incr" "x" (Add (Var "x") (Integer 1))] 
-                 (Call "incr" (Call "incr" (Let "incr" (Integer 5) (Var "incr"))))    
+ex_program8 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
+                 (Call "incr" [(Call "incr" [(Let "incr" (Integer 5) (Var "incr"))])])    
 
 ex_program9 = Program [Define "x" (Integer 2)] 
                  (Add (Var "x") (Let "x" (Integer 1) (Var "x")))    
 
 ex_program10 = Program [Define "x" (Integer 2)] 
-                 (Call "x" (Integer 1))                                                                       
+                 (Call "x" [(Integer 1)])       
 
 
+-- add has multiple variables and is called with enough args
+ex_program_11 = Program 
+                [ Defun "fact" ("n", []) 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "add" ("x",["y"]) (Add (Var "x") (Var "y")),
+                      Define "z" (Integer 10),
+                      Define "a" (Boolean False)]
+                (If (Var "a") (Boolean True) (Call "add" [(Call "fact" [(Integer 5)]),  Var "z"]))       
+
+-- add has multiple variables and is called with not enough args
+ex_program_12 = Program 
+                [ Defun "fact" ("n", []) 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "add" ("x",["y"]) (Add (Var "x") (Var "y")),
+                      Define "z" (Integer 10),
+                      Define "a" (Boolean False)]
+                (If (Var "a") (Boolean True) (Call "add" [(Call "fact" [(Integer 5)])]))     
+
+-- add has one variables and is called with multiple args
+ex_program_13 = Program 
+                [ Defun "fact" ("n", []) 
+                    (If  
+                      (Equal_To (Integer 0) (Var "n"))
+                      (Integer 1) 
+                      (Mul (Var "n") (Call "fact" [(Sub (Var "n") (Integer 1))]))), 
+                      Defun "add" ("x",[]) (Add (Var "x") (Var "y")),
+                      Define "z" (Integer 10),
+                      Define "a" (Boolean False)]
+                (If (Var "a") (Boolean True) (Call "add" [(Call "fact" [(Integer 5)]), Integer 10]))                                                                                                       
+
+-- Function that takes in a Program and evaluates the program to get a resulting Maybe ExprEval
 evalProgram :: Program -> Maybe ExprEval
 evalProgram (Program globalDefs e) = eval globals empty e
   where 
@@ -183,6 +220,16 @@ test_evalProgram = do
     test "evalProgram ex4 from pdf"(evalProgram (Program [
       Define "x" (Integer 32)] (Let "y" (Mul (Var "x") (Integer 2)) (Var "z")))) 
        (Nothing)   
+
+    -- // Tests for programs that have functions with multiple arguments 
+    test "evalProgram functions with multiple arguments test 1" (evalProgram ex_program_11) 
+     (Just $ Eval_Integer 130) 
+
+    test "evalProgram functions with multiple arguments test 2" (evalProgram ex_program_12) 
+     (Nothing)  
+
+    test "evalProgram functions with multiple arguments test 3" (evalProgram ex_program_13) 
+     (Nothing)  
    
 
     
@@ -273,10 +320,29 @@ eval g m (Let x e1 e2) =
          Nothing -> (Nothing)
 eval g m (Call f e) =
     case get g f of
-         Just (Defun _ x body) ->
-             case eval g m e of 
-                  Just v -> eval g (set empty x v) body  
-                  _ -> Nothing
+         Just (Defun _ (x, extra) body) -> runFunction g m empty e variableList body
+            {-
+              Make a function to go through both the list of variables for the function
+              and the list of arguments given in the call. 
+              Create the variableList by adding the first of the tuple to the list 
+              of list of variables and this keeps the order by putting that in front. 
+              Then if one list is larger than the other then return nothing
+              If both have an element then set the variable with the argument in a new local map
+              and then recall the function along with passing that on. 
+              Use original m map to eval each Expr argument. 
+              When both lists are empty then call eval with the new local map 
+              similar to how an empty map was used alongwith a set for the one argument impl. 
+            -} 
+            where 
+              variableList = x : extra
+              runFunction :: GlobalEnv -> Env -> Env -> [Expr] -> [Variable] -> Expr -> Maybe ExprEval
+              runFunction g m m2 [] [] _ = eval g m2 body 
+              runFunction g m m2 [] _  _ = Nothing 
+              runFunction g m m2 _ [] _ = Nothing
+              runFunction g m m2 (x:xs) (y:ys) body = 
+                case eval g m x of 
+                     Just v -> runFunction g m (set m2 y v) xs ys body
+                     _ -> Nothing
          _ -> Nothing                               
 -- If eval e1 is true then return e2, if false return e3, else return Nothing because 
 -- did not receive boolean for e1.          
@@ -1150,23 +1216,52 @@ test_eval = do
       (Var "x"))) (Just (Eval_Pair (Eval_Integer 5) (Eval_Float 5.5)))
 
     -- // Tests for call 
-    test "eval Call: call with no function known" (eval empty empty (Call "hello" (Integer 10)))
+    test "eval Call: call with no function known" (eval empty empty (Call "hello" [(Integer 10)]))
      (Nothing)  
 
-    test "eval Call: call with a variable of same name in env" (eval empty [("hello", (Eval_Integer 10))] (Call "hello" (Integer 10)))
+    test "eval Call: call with a variable of same name in env" (eval empty [("hello", (Eval_Integer 10))] (Call "hello" [(Integer 10)]))
      (Nothing)  
 
-    test "eval Call: call with a variable of same name in globalenv" (eval [("hello", (Define "hello" $ Integer 10))] empty (Call "hello" (Integer 10)))
+    test "eval Call: call with a variable of same name in globalenv" (eval [("hello", (Define "hello" $ Integer 10))] empty (Call "hello" [(Integer 10)]))
      (Nothing)   
 
-    test "eval Call: call with a function of same name" (eval [("hello", (Defun "hello" "x" (Var "x")))] 
-     empty (Call "hello" (Integer 10)))  (Just (Eval_Integer 10))
+    test "eval Call: call with a function of same name" (eval [("hello", (Defun "hello" ("x",[]) (Var "x")))] 
+     empty (Call "hello" [(Integer 10)]))  (Just (Eval_Integer 10))
 
-    test "eval Call: call with a function of same name with nothing input" (eval [("hello", (Defun "hello" "x" (Var "x")))] 
-     empty (Call "hello" (Add (Boolean False) (Integer 10))))  (Nothing)  
- 
-         
-   
+    test "eval Call: call with a function of same name with nothing input" (eval [("hello", 
+     (Defun "hello" ("x", []) (Var "x")))] 
+      empty (Call "hello" [(Add (Boolean False) (Integer 10))]))  (Nothing)  
+
+    -- // Tests for call with functions with multiple args 
+    test "eval Call: call with a function with multiple variables and enough arguments 1" (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Var "x")))] empty (Call "hello" [Integer 10, Integer 20])) 
+     (Just (Eval_Integer 10))  
+
+    test "eval Call: call with a function with multiple variables and enough arguments 2" (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Add (Var "x") (Var "y"))))] empty (Call "hello" [Integer 10, Integer 20]))  
+     (Just (Eval_Integer 30))    
+
+    test "eval Call: call with a function with multiple variables and enough arguments 3" (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Add (Var "x") (Div (Var "y") (Integer 2)))))] empty (Call "hello" [Integer 10, Integer 20]))  
+     (Just (Eval_Integer 20))    
+
+    test "eval Call: call with a function with multiple variables and enough arguments 4" (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Add (Var "y") (Div (Var "x") (Integer 2)))))] empty (Call "hello" [Integer 10, Integer 20]))  
+     (Just (Eval_Integer 25))     
+
+    test "eval Call: call with a function with multiple variables and enough arguments 5" (eval 
+     [("hello", (Defun "hello" ("x",["y", "z"]) (If (Var "z") (Boolean True) (Add (Var "y") (Div (Var "x") (Integer 2))))))] empty 
+      (Call "hello" [Integer 10, Integer 20, Boolean False]))  
+     (Just (Eval_Integer 25))      
+
+    test "eval Call: call with a function with multiple variables and not enough arguments " (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Var "x")))] empty (Call "hello" [Integer 10])) 
+      (Nothing)    
+
+    test "eval Call: call with a function with variables and but too many arguments " (eval 
+     [("hello", (Defun "hello" ("x",["y"]) (Var "x")))] empty (Call "hello" 
+      [Integer 10, Integer 30, Integer 40])) 
+      (Nothing)         
      
 
 -- |Substitutes the given value for the given variable in the given expression.
@@ -2074,9 +2169,13 @@ test_runSExpression = do
      (Just $ S.Boolean True)    
 
     -- Program tests 
-    test "Program runSExpression test 1" (runSExpression $ S.List[S.Symbol "Program", S.List[S.Symbol "Defun", S.Symbol "incr", S.Symbol "x", 
-     S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], S.List[S.Symbol "Call", S.Symbol "incr", 
-     S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.Symbol "Call", S.Symbol "incr", (S.Integer 1)]]]]) 
+    test "Program runSExpression test 1 one defun" (runSExpression $ S.List[S.Symbol "Program", S.List [S.List[S.Symbol "Defun", S.Symbol "incr", S.List [S.Symbol "x"], 
+     S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]]], S.List[S.Symbol "Call", S.Symbol "incr", 
+     S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [S.Integer 1]]]]]]]) 
      (Just $ S.Integer 4)
+
+    test "Program runSExpression test 2 one defun " (runSExpression sexpr_ex1) (Just $ S.Integer 4) 
+
+    test "Program runSExpression test 3 two defuns" (runSExpression sexpr_ex1B) (Just $ S.Integer 6) 
 
      
