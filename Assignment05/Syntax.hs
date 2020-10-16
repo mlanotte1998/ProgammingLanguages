@@ -19,7 +19,10 @@ import qualified SExpression as S
 import Maps (Map, get, set, empty)
 
 import Prelude hiding (Left, Right)
+
 import SimpleTests (test)
+
+--  ==========================================================================================================
 
 --Data type respresenting an Integer, a Double, or a Boolean
 --This is the return type of the eval function 
@@ -34,6 +37,7 @@ data ExprEval = Eval_Integer Integer
 type Variable = String
 
 {-
+--BNF Notation
 <Expr> :: = <Integer>
          | <Float>
          | <Boolean> 
@@ -71,6 +75,8 @@ type Variable = String
 -}
 
  -- |protoScheme expressions
+ --data type representing the expressions used by the syntax 
+ --in protoscheme 
 data Expr = Integer Integer
           | Float Double
           | Boolean Bool
@@ -99,11 +105,12 @@ data Expr = Integer Integer
           | Call Variable [Expr]
           deriving (Eq, Show)
 
--- | Program data type which is a sequence of global definitions, followed by a single expression
+-- | Program data type which is a sequence of global definitions
+--   followed by a single expression
 data Program = Program [GlobalDef] Expr
              deriving (Eq, Show)
--- | GlobalDef data type which can be either a function definition, introduced using defun, or
---    a global variable definition, introduced using define
+-- | GlobalDef data type which can be either a function definition, introduced
+--    using defun, or a global variable definition, introduced using define
 data GlobalDef = Defun Variable (Variable, [Variable]) Expr
                | Define Variable Expr
                deriving (Eq, Show)
@@ -112,8 +119,12 @@ data GlobalDef = Defun Variable (Variable, [Variable]) Expr
 -- |Environments are maps from Variables to values (Integers)
 type Env = Map Variable ExprEval
 
+-- |Outside of the environment, at a larger scope, is the global environment
+--  values saved here are used if there is no value at the environment level
 type GlobalEnv = Map Variable GlobalDef               
  
+--  ================================================================================================
+
 --Creates a Program representing the given SExpression
 --Parses SExpression and converts it to the data type Program
 programFromSExpression :: S.Expr -> Program 
@@ -138,17 +149,45 @@ programFromSExpression (S.List[S.Symbol "Program", S.List x, e]) =
             variableListFromSExprList [] = []
             variableListFromSExprList ((S.Symbol x):xs) = x : variableListFromSExprList xs  
 
+-- Examples of S-Expressions representing a variety of Programs, including simple and nested Programs
+-- and programs including Defun and Define
+sexpr_empty = S.List[S.Symbol "Program", S.List[], (S.Integer 5)]
+
 sexpr_ex1 = S.List[S.Symbol "Program", S.List [S.List[S.Symbol "Defun", S.Symbol "incr", S.List [S.Symbol "x"], 
   S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]]], S.List[S.Symbol "Call", S.Symbol "incr", 
     S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [
     S.List [S.Symbol "Call", S.Symbol "incr", S.List [S.Integer 1]]]]]]]
 
-sexpr_ex1B = S.List[S.Symbol "Program", S.List [S.List[S.Symbol "Defun", S.Symbol "incr", S.List [S.Symbol "x"], 
+sexpr_ex1B = S.List[S.Symbol "Program", S.List[S.List[S.Symbol "Defun", S.Symbol "incr", S.List [S.Symbol "x"], 
   S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
    S.List [S.Symbol "Defun", S.Symbol "Plus", S.List [S.Symbol "x", S.Symbol "y"], 
     S.List [S.Symbol "+", S.Symbol "x", S.Symbol "y"]]], S.List[S.Symbol "Call", S.Symbol "incr", 
     S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [
     S.List [S.Symbol "Call", S.Symbol "Plus", S.List [S.Integer 1, S.Integer 3]]]]]]]    
+
+sexpr_ex2 = S.List[S.Symbol "Program", S.List[S.List[S.Symbol "Defun", S.Symbol "f", S.List[S.Symbol "x"], 
+  S.List[S.Symbol "+", S.Symbol "x", S.Symbol "y"]]], S.List[S.Symbol "Let", S.Symbol "y", S.Integer 10,
+  S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 10]]]]
+
+sexpr_ex3 = S.List[S.Symbol "Program", S.List[S.List[S.Symbol "Defun", S.Symbol "incr", S.List[S.Symbol "x"],
+  S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]]], S.List[S.Symbol "Let", S.Symbol "z", S.Integer 20,
+  S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.Symbol "z"]]]]
+
+sexpr_ex4 = S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol "f", S.Integer 10], 
+  S.List[S.Symbol "-", S.Symbol "f", S.Integer 1]]
+
+sexpr_ex5 = S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol "Double", S.List[S.Symbol "Pair", S.Integer 10, S.Integer 2]], 
+  S.List[S.Symbol "Pair", S.List[S.Symbol "*", S.Integer 2, S.List[S.Symbol "Left", S.Symbol "Double"]],
+  S.List[S.Symbol "*", S.Integer 2, S.List[S.Symbol "Right", S.Symbol "Double"]]]] 
+
+sexpr_ex6 = S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol "f", S.Integer 10], 
+  S.List[S.Symbol "-", S.Symbol "f", S.Integer 1]]
+
+sexpr_ex7 = S.List[S.Symbol "Program", S.List[S.Symbol "Define", S.Symbol "p", S.List[S.Symbol "Pair",
+  S.Real 1.01, S.Boolean False]], S.List[S.Symbol "Right", S.Symbol "p"]]
+
+--Examples of the same Programs represented above but as their original Program data type
+ex_program_mt = Program [] (Integer 5)
 
 ex_program_1 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
                  (Call "incr" [(Call "incr" [(Call "incr" [(Integer 1)])])])
@@ -159,16 +198,29 @@ ex_program_1B = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1)),
 
 ex_program_2 = Program [Defun "f" ("x", []) (Add (Var "x") (Var "y"))]
                  (Let "y" (Integer 10) (Call "f" [(Integer 10)]))
+
 ex_program_3 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
                  (Let "z" (Integer 20) (Call "incr" [(Var "z")]))
 
+ex_program_4 = Program [Define "f" (Integer 10)] (Sub (Var "f") (Integer 1))
+
+
 --tests of programFromSExpression Defun
 test_programFromSExpression = do
-    test "programFromSExpression ex1 test" (programFromSExpression sexpr_ex1) (ex_program_1)
+    test "programFromSExpression ex_empty test 1" (programFromSExpression sexpr_empty) (ex_program_mt)
 
-    test "programFromSExpression ex2 test" (programFromSExpression sexpr_ex1B) (ex_program_1B)
+    test "programFromSExpression ex1 test 2" (programFromSExpression sexpr_ex1) (ex_program_1)
 
-   
+    test "programFromSExpression ex1B test 3" (programFromSExpression sexpr_ex1B) (ex_program_1B)
+
+    test "programFromSExpression ex2 test 4" (programFromSExpression sexpr_ex2) (ex_program_2)
+
+    test "programFromSExpression ex3 test 5" (programFromSExpression sexpr_ex3) (ex_program_3)
+
+    test "programFromSExpression ex4 test 6" (programFromSExpression sexpr_ex4) (ex_program_4)
+
+--  =========================================================================================================
+
 -- |Parse an s-expression and convert it into a protoScheme expression.
 -- Need to have the S.Symbol x last to account for where there should be let because
 -- pattern matching tells us that that symbol is not one of the four operation symbols. 
@@ -227,8 +279,6 @@ fromSExpression (S.List [S.Symbol "Cond", S.List x, e]) =
             handleElse :: S.Expr -> Maybe Expr 
             handleElse (S.Symbol "Nothing") = Nothing 
             handleElse e = Just (fromSExpression e)
-
-
           
 
 
@@ -630,7 +680,23 @@ test_fromSExpression = do
     test "fromSExpression Pair? test 5" (fromSExpression $ S.List[S.Symbol "Pair?", S.List[S.Symbol "Pair", (S.Integer 1), (S.Integer 2)]])
      (Pair_Pred (Pair (Integer 1) (Integer 2)))
 
--- ================================================================================================
+    --Call Tests
+    test "fromSExpression Call test 1" (fromSExpression (S.List[S.Symbol "Call", S.Symbol "f", S.List[S.List[S.Symbol "Call", 
+      S.Symbol "f", S.List[S.Integer 1]]]])) (Call "f" [Call "f" [Integer 1]])
+
+    test "fromSExpression Call test 2" (fromSExpression (S.List[S.Symbol "Let", S.Symbol "y", S.Integer 10, S.List[
+      S.Symbol "Call", S.Symbol "f", S.List[S.Integer 10]]])) (Let "y" (Integer 10) (Call "f"[Integer 10]))
+    
+    test "fromSExpression Call test 3" (fromSExpression (S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.List[S.Symbol "Call", 
+      S.Symbol "Plus", S.List[S.Integer 1, S.Integer 3]]]]]]))
+      (Call "incr" [Call "incr"[Call "Plus"[Integer 1, Integer 3]]])
+
+    test "fromSExpression Call test 4" (fromSExpression $ S.List[S.Symbol "+", S.List[S.Symbol "Let", S.Symbol "y", S.Integer 10, 
+      S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 10]]], S.List[S.Symbol "Call", S.Symbol "f", S.List[
+      S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 1]]]]]) 
+      (Add (Let "y" (Integer 10) (Call "f"[Integer 10])) (Call "f" [Call "f" [Integer 1]]))
+
+-- ==========================================================================================================
 
 {-
   For Assignment 4:
@@ -1033,8 +1099,25 @@ test_toSExpression = do
     test "toSExpression Pair? test 5" (toSExpression (Pair_Pred (Pair (Integer 1) (Integer 2))))
       (S.List[S.Symbol "Pair?", S.List[S.Symbol "Pair", (S.Integer 1), (S.Integer 2)]])
 
+    --Call Tests
+    test "toSExpression Call test 1" (toSExpression (Call "f" [Call "f" [Integer 1]])) 
+      (S.List[S.Symbol "Call", S.Symbol "f", S.List[S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 1]]]])
 
--- |Convert an evaluation result into s-expression
+    test "toSExpression Call test 2" (toSExpression (Let "y" (Integer 10) (Call "f"[Integer 10])))
+      (S.List[S.Symbol "Let", S.Symbol "y", S.Integer 10, S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 10]]])
+    
+    test "toSExpression Call test 3" (toSExpression (Call "incr" [Call "incr" [Call "Plus" [Integer 1, Integer 3]]]))
+      (S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.List[S.Symbol "Call", S.Symbol "incr", S.List[S.List[S.Symbol "Call", 
+        S.Symbol "Plus", S.List[S.Integer 1, S.Integer 3]]]]]])
+
+    test "toSExpression Call test 4" (toSExpression (Add (Let "y" (Integer 10) (Call "f"[Integer 10])) 
+      (Call "f" [Call "f" [Integer 1]]))) (S.List[S.Symbol "+", S.List[S.Symbol "Let", S.Symbol "y", S.Integer 10, 
+      S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 10]]], S.List[S.Symbol "Call", S.Symbol "f", S.List[
+      S.List[S.Symbol "Call", S.Symbol "f", S.List[S.Integer 1]]]]]) 
+
+--  ===========================================================================================================
+
+-- |Convert the evaluation result into the corresponding S-expression representation
 valueToSExpression :: ExprEval -> S.Expr
 valueToSExpression (Eval_Integer i) = S.Integer i
 valueToSExpression (Eval_Float r) = S.Real r

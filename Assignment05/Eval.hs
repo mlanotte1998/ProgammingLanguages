@@ -54,7 +54,7 @@ test_checkFloatEquality = do
  
 
 -- ================================================================================================
-
+--Examples of Programs using Defun, containing both singular Expr and lists of Expr
 
 ex_program1 = Program [Defun "incr" ("x", []) (Add (Var "x") (Integer 1))] 
                  (Call "incr" [(Call "incr" [(Call "incr" [(Integer 1)])])])
@@ -145,7 +145,9 @@ ex_program_13 = Program
                       Defun "add" ("x",[]) (Add (Var "x") (Var "y")),
                       Define "z" (Integer 10),
                       Define "a" (Boolean False)]
-                (If (Var "a") (Boolean True) (Call "add" [(Call "fact" [(Integer 5)]), Integer 10]))                                                                                                       
+                (If (Var "a") (Boolean True) (Call "add" [(Call "fact" [(Integer 5)]), Integer 10]))   
+
+--  ================================================================================================                                                                                                    
 
 -- Function that takes in a Program and evaluates the program to get a resulting Maybe ExprEval
 evalProgram :: Program -> Maybe ExprEval
@@ -158,7 +160,7 @@ evalProgram (Program globalDefs e) = eval globals empty e
     collectDefs (Define v e : globalDefs) = 
         set (collectDefs globalDefs) v (Define v e)    
 
-
+--tests of the evalProgram function
 test_evalProgram = do 
     test "evalProgram empty globalDefs and simple expression" (evalProgram $ Program [] (Integer 10))
      (Just (Eval_Integer 10))    
@@ -231,9 +233,6 @@ test_evalProgram = do
     test "evalProgram functions with multiple arguments test 3" (evalProgram ex_program_13) 
      (Nothing)  
    
-
-    
-
  -- ===============================================================================================
 
 -- |Evaluates the given expression to a value.
@@ -260,6 +259,7 @@ eval g m (Var x) =
          _ -> case get g x of 
                    Just (Define _ v) -> eval g m v
                    _ -> Nothing
+-- In the case of addition convert Expr as necessary and apply operation if possible   
 eval g m (Add e1 e2) =
     case eval g m e1 of
          Just (Eval_Integer v1) ->
@@ -272,7 +272,8 @@ eval g m (Add e1 e2) =
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 + (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 + v2))
                  _ -> Nothing
-         _ -> Nothing    
+         _ -> Nothing  
+-- In the case of subtraction convert Expr as necessary and apply operation if possible     
 eval g m (Sub e1 e2) =
     case eval g m e1 of
          Just (Eval_Integer v1) ->
@@ -285,7 +286,8 @@ eval g m (Sub e1 e2) =
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 - (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 - v2))
                  _ -> Nothing
-         _ -> Nothing    
+         _ -> Nothing 
+-- In the case of multiplication convert Expr as necessary and apply operation if possible   
 eval g m (Mul e1 e2) =
     case eval g m e1 of
          Just (Eval_Integer v1) ->
@@ -298,7 +300,8 @@ eval g m (Mul e1 e2) =
                  Just (Eval_Integer v2) -> Just (Eval_Float(v1 * (fromInteger v2)))
                  Just (Eval_Float v2) -> Just (Eval_Float (v1 * v2))
                  _ -> Nothing
-         _ -> Nothing         
+         _ -> Nothing    
+-- In the case of division convert Expr as necessary and apply operation if possible   
 eval g m (Div e1 e2) =
     case eval g m e1 of
          Just (Eval_Integer v1) ->
@@ -440,7 +443,9 @@ eval g m (Equal_To e1 e2) =
          Nothing -> 
              case eval g m e2 of 
                  Nothing -> Just (Eval_Boolean (True))
-                 _ -> Nothing     
+                 _ -> Nothing   
+--In the case of a Cond Expr, refer to the EvalTupleListHelper to identify
+--the inputs and find the correct branch to follow 
 eval g m (Cond x y) = (evalTupleListHelper g m x y)  
 -- Pair needs to make sure that both eval e1 and eval e2 are values
 -- otherwise return nothing. 
@@ -484,7 +489,8 @@ eval g m (Pair_Pred e) = case eval g m e of
                           Just (Eval_Pair _ _) -> Just (Eval_Boolean True)        
                           _ -> Just (Eval_Boolean False)                                                                                                        
 
--- Helper function for eval that handles a cond list 
+-- Helper function for eval that handles a cond list by identifying the inputs using pattern matching
+--and follows the cond branch that has a corresponding true value 
 evalTupleListHelper :: GlobalEnv -> Env -> [(Expr, Expr)] -> Maybe Expr -> Maybe ExprEval
 evalTupleListHelper _ _ [] Nothing = Nothing 
 evalTupleListHelper g m [] (Just e) = eval g m e 
@@ -493,7 +499,7 @@ evalTupleListHelper g m ((t1, t2):xs) y = case eval g m t1 of
                                          (Just (Eval_Boolean False)) -> evalTupleListHelper g m xs y
                                          _ -> Nothing 
 
-
+-- Tests of the Eval
 test_evalTupleListHelper = do 
     test "evalTupleListHelper basic test" (evalTupleListHelper empty empty [] Nothing ) Nothing 
 
@@ -1263,6 +1269,7 @@ test_eval = do
       [Integer 10, Integer 30, Integer 40])) 
       (Nothing)         
      
+--  =================================================================================================
 
 -- |Substitutes the given value for the given variable in the given expression.
 -- Given value can now be either a double or an integer 
@@ -1722,7 +1729,7 @@ test_subst = do
      (Pair_Pred (Let "y" (Integer 20) (Add (Var "x") (Var "y")))))
       (Pair_Pred (Let "y" (Integer 20) (Add (Pair (Integer 5) (Float 5.5)) (Var "y"))))   
    
-
+--  =========================================================================================================
        
        
 -- |Run the given protoScheme s-expression, returning an s-expression
@@ -2178,4 +2185,10 @@ test_runSExpression = do
 
     test "Program runSExpression test 3 two defuns" (runSExpression sexpr_ex1B) (Just $ S.Integer 6) 
 
-     
+    test "Program runSExpression test 4 one defun with Let " (runSExpression sexpr_ex3) (Just $ S.Integer 21) 
+
+    test "Program runSExpression test 5 one define" (runSExpression sexpr_ex4) (Just $ S.Integer 9) 
+
+    test "Program runSExpression test 6 two defines" (runSExpression sexpr_ex5) (Just $ S.Dotted (S.Integer 20) (S.Integer 4)) 
+
+    test "Program runSExpression test 7 define with diff types" (runSExpression sexpr_ex7) (Just $ S.Boolean False)

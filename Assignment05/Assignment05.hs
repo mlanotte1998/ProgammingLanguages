@@ -12,6 +12,10 @@ module Assignment05 where
 import Syntax
 import Eval
 
+--the main function runs all tests associated witht the files Syntax.hs and Eval.hs
+--this tests the functionality of all implemented methods involving converting between 
+--SExpression and protoscheme, as well as Program and SExpression, as well as evaluating
+--the values represented by protoscheme, Program, and SExpression data types
 main :: IO () 
 main = do 
     (print "Test fromSExpression and its helper")
