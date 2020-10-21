@@ -21,7 +21,7 @@ import qualified SExpression as S
 
 import Maps (Map, get, set, empty)
 
-import SimpleTests (test)
+import SimpleTestsColor (test)
 
 -- ======================================================================================================
 
@@ -236,19 +236,6 @@ test_evalProgram = do
  -- ===============================================================================================
 
 -- |Evaluates the given expression to a value.
-{-
- For Assignment 5: 
- Added Pair, Left, and Right cases for Question 1.
- Added the five predicate cases for Question 2.  
- Also fixed up add, sub, mul, div, and let to now account 
- for the Eval_Pair possibility. For the math operations, code got 
- simpler since eval boolean, eval pair, and nothing go to nothing,
- but for let needed to add an actual case. 
- Also fixed Cond/Else stuff now that we use a Maybe Expr for the else case
- Rather than having an Else Expr type. 
-
- Added Call and changed let to take into account environment / program impl. 
--}
 eval :: GlobalEnv -> Env -> Expr -> Maybe ExprEval 
 eval g m (Integer i) = Just (Eval_Integer i)
 eval g m (Float d) = Just (Eval_Float d)
@@ -1786,13 +1773,13 @@ test_runSExpression = do
       S.Integer 10, S.Integer 6]]) 
      (Just $ S.Integer 3)
 
-    test "Integer runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
-     S.List [S.Symbol "+", S.Integer 10, S.Integer 4], S.List [S.Symbol "+", S.Symbol "x", S.Integer 1]])
+    test "Integer runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Integer 10, S.Integer 4]], S.List [S.Symbol "+", S.Symbol "x", S.Integer 1]])
      (Just $ S.Integer 15)
 
-    test "Integer runExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
-     S.List [S.Symbol "-", S.Integer 20, S.Integer 8], S.List [S.Symbol "Let", S.Symbol "x",
-      S.List [S.Symbol "+", S.Symbol "y", S.Integer 4], S.List [S.Symbol "+",
+    test "Integer runExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Integer 8]], S.List [S.Symbol "let", S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Integer 4]], S.List [S.Symbol "+",
        S.Symbol "x", S.Integer 1]]])
        (Just $ S.Integer 17)
 
@@ -1816,13 +1803,13 @@ test_runSExpression = do
      S.List [S.Symbol "+", S.Real 4.1, S.Real 10.1], S.List [S.Symbol "-",
       S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.3666666666666667))
 
-    test "Real runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
-     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+    test "Real runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
      (Just $ S.Real 15.299999999999999)
 
-    test "Real runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
-     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1], S.List [S.Symbol "Let", S.Symbol "x",
-      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+    test "Real runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Real 20.1, S.Real 8.1]], S.List [S.Symbol "let", S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1]], S.List [S.Symbol "+",
        S.Symbol "x", S.Real 1.1]]])
      (Just $ S.Real 17.200000000000003) 
 
@@ -1844,13 +1831,13 @@ test_runSExpression = do
      S.List [S.Symbol "+", S.Real 4.1, S.Integer 10], S.List [S.Symbol "-",
       S.Real 4.1, S.Real 10.1]]) (Just $ S.Real (-2.35))
 
-    test "Mixed runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "x",
-     S.List [S.Symbol "+", S.Integer 10, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
+    test "Mixed runSExpression Test Let  Simple" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "x",
+     S.List [S.Symbol "+", S.Integer 10, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]])
      (Just $ S.Real 15.2)
 
-    test "Mixed runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "Let", S.Symbol "y",
-     S.List [S.Symbol "-", S.Integer 20, S.Real 8.1], S.List [S.Symbol "Let", S.Symbol "x",
-      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1], S.List [S.Symbol "+",
+    test "Mixed runSExpression Test Let Complex" (runSExpression $ S.List [S.Symbol "let", S.List [S.Symbol "y",
+     S.List [S.Symbol "-", S.Integer 20, S.Real 8.1]], S.List [S.Symbol "let", S.List [S.Symbol "x",
+      S.List [S.Symbol "+", S.Symbol "y", S.Real 4.1]], S.List [S.Symbol "+",
        S.Symbol "x", S.Real 1.1]]])
      (Just $ S.Real 17.1)   
 
@@ -1866,319 +1853,319 @@ test_runSExpression = do
     -- If tests 
 
     test "If runSExpression Test e1 is True Simple" (runSExpression $ S.List 
-      [S.Symbol "If", S.Boolean True, S.Integer 10, S.Real 15])
+      [S.Symbol "if", S.Boolean True, S.Integer 10, S.Real 15])
         (Just $ S.Integer 10)  
 
     test "If runSExpression Test e1 is False Simple" (runSExpression $ S.List 
-      [S.Symbol "If", S.Boolean False, S.Integer 10, S.Real 15])
+      [S.Symbol "if", S.Boolean False, S.Integer 10, S.Real 15])
         (Just $ S.Real 15)      
 
     test "If runSExpression Test e1 is True Complex" (runSExpression $ S.List 
-      [S.Symbol "If", S.Boolean True, S.List [S.Symbol "+", S.Integer 10, S.Integer 15] , S.Real 15])
+      [S.Symbol "if", S.Boolean True, S.List [S.Symbol "+", S.Integer 10, S.Integer 15] , S.Real 15])
         (Just $ S.Integer 25)  
 
     test "If runSExpression Test e1 is False Complex" (runSExpression $ S.List 
-      [S.Symbol "If", S.Boolean False, S.Integer 10, S.List [S.Symbol "+", S.Real 10.1, S.Real 15.1]])
+      [S.Symbol "if", S.Boolean False, S.Integer 10, S.List [S.Symbol "+", S.Real 10.1, S.Real 15.1]])
         (Just $ S.Real 25.2)     
 
     test "If runSExpression Test e1 is not a boolean" (runSExpression $ S.List 
-      [S.Symbol "If", S.List [S.Symbol "+", S.Integer 10, S.Integer 15], S.Integer 10, S.Real 15])
+      [S.Symbol "if", S.List [S.Symbol "+", S.Integer 10, S.Integer 15], S.Integer 10, S.Real 15])
         (Nothing)       
 
     -- And tests
-    test "And runSExpression Test 1" (runSExpression $ S.List [S.Symbol "And" , S.Boolean True, S.Integer 10]) 
+    test "And runSExpression Test 1" (runSExpression $ S.List [S.Symbol "and" , S.Boolean True, S.Integer 10]) 
         (Nothing)   
 
     test "And runSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "And" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "and" , S.Boolean False, S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Just $ S.Boolean False)       
 
     test "And runSExpression Test 3" (runSExpression $ S.List [
-        S.Symbol "And" , S.List [S.Symbol "And" , S.Integer 10, S.Real 15.1], 
-         S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "and" , S.List [S.Symbol "and" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Nothing)    
 
-    test "And runSExpression Test 4" (runSExpression $ S.List [S.Symbol "And" , S.Boolean True, S.Boolean False]) 
+    test "And runSExpression Test 4" (runSExpression $ S.List [S.Symbol "and" , S.Boolean True, S.Boolean False]) 
         (Just $ S.Boolean False)
       
-    test "And runSExpression Test 5" (runSExpression $ S.List [S.Symbol "And" , S.Boolean True, S.Boolean True]) 
+    test "And runSExpression Test 5" (runSExpression $ S.List [S.Symbol "and" , S.Boolean True, S.Boolean True]) 
         (Just $ S.Boolean True)
 
     -- Or tests
     test "Or runSExpression Test 1" (runSExpression $ S.List [
-        S.Symbol "Or" , S.Boolean True, S.Integer 10]) 
+        S.Symbol "or" , S.Boolean True, S.Integer 10]) 
         (Just $ S.Boolean True)
 
     test "Or runSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "Or" , S.Boolean False, S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "or" , S.Boolean False, S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Just $ S.Boolean False)    
 
     test "Or runSExpression Test 3" (runSExpression $ S.List [
-        S.Symbol "Or" , S.List [S.Symbol "Or" , S.Integer 10, S.Real 15.1], 
-         S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "or" , S.List [S.Symbol "or" , S.Integer 10, S.Real 15.1], 
+         S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Nothing)    
 
     test "Or runSExpression Test 4" (runSExpression $ S.List [
-        S.Symbol "Or" , S.Boolean True, S.Boolean False]) 
+        S.Symbol "or" , S.Boolean True, S.Boolean False]) 
         (Just $ S.Boolean True)
 
     test "Or runSExpression Test 5" (runSExpression $ S.List [
-        S.Symbol "Or" , S.Boolean False, S.Boolean False]) 
+        S.Symbol "or" , S.Boolean False, S.Boolean False]) 
         (Just $ S.Boolean False)
 
     -- Not tests
     test "Not runSExpression Test 1" (runSExpression $ S.List [
-        S.Symbol "Not" , S.Boolean True]) 
+        S.Symbol "not" , S.Boolean True]) 
         (Just $ S.Boolean False)
 
     test "Not fromSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "Not" , S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "not" , S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Nothing)      
 
     test "Not fromSExpression Test 3" (runSExpression $ S.List [
-        S.Symbol "Not" , S.List [S.Symbol "Or" , S.Integer 10, 
-         S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
+        S.Symbol "not" , S.List [S.Symbol "or" , S.Integer 10, 
+         S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]]) 
         (Nothing)  
 
     test "Not runSExpression Test 4" (runSExpression $ S.List [
-        S.Symbol "Not" , S.Boolean False]) 
+        S.Symbol "not" , S.Boolean False]) 
         (Just $ S.Boolean True)     
 
     -- //Less_Than tests 
     test "Less_Than runSExpression Test 1" (runSExpression $ S.List [
-        S.Symbol "Less_Than", S.Boolean True, S.Integer 10]) 
+        S.Symbol "<", S.Boolean True, S.Integer 10]) 
         (Nothing)
 
     test "Less_Than runSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "Less_Than", S.Integer 30, S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "<", S.Integer 30, S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Just $ S.Boolean False)    
 
     test "Less_Than runSExpression Test 3" (runSExpression $ S.List [
-         S.Symbol "Less_Than", S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]], S.Integer 30]) 
+         S.Symbol "<", S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]], S.Integer 30]) 
         (Just $ S.Boolean True)      
 
     test "Less_Than runSExpression Test 4" (runSExpression $ S.List [
-        S.Symbol "Less_Than", S.Real 15.1, S.Real 13.2]) 
+        S.Symbol "<", S.Real 15.1, S.Real 13.2]) 
         (Just $ S.Boolean False)
 
     test "Less_Than runSExpression Test 5" (runSExpression $ S.List [
-        S.Symbol "Less_Than", S.Integer 5, S.Integer 6]) 
+        S.Symbol "<", S.Integer 5, S.Integer 6]) 
         (Just $ S.Boolean True)
 
     -- //Greater_Than tests 
     test "Greater_Than runSExpression Test 1" (runSExpression $ S.List [
-        S.Symbol "Greater_Than" , S.Boolean True, S.Integer 10]) 
+        S.Symbol ">" , S.Boolean True, S.Integer 10]) 
         (Nothing)
 
     test "Greater_Than runSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "Greater_Than" , S.Integer 30, S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol ">" , S.Integer 30, S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Just $ S.Boolean True)    
 
     test "Greater_Than runSExpression Test 3" (runSExpression $ S.List [
-         S.Symbol "Greater_Than" , S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]], S.Integer 30]) 
+         S.Symbol ">" , S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.1]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]], S.Integer 30]) 
         (Just $ S.Boolean False)      
 
     test "Greater_Than runSExpression Test 4" (runSExpression $ S.List [
-        S.Symbol "Greater_Than" , S.Real 15.1, S.Real 13.2]) 
+        S.Symbol ">" , S.Real 15.1, S.Real 13.2]) 
         (Just $ S.Boolean True)
 
     test "Greater_Than runSExpression Test 5" (runSExpression $ S.List [
-        S.Symbol "Greater_Than" , S.Integer 5, S.Integer 6]) 
+        S.Symbol ">" , S.Integer 5, S.Integer 6]) 
         (Just $ S.Boolean False)
 
      -- //Equal_To tests 
     test "Equal_To runSExpression Test 1" (runSExpression $ S.List [
-        S.Symbol "Equal_To" , S.Boolean True, S.Integer 10]) 
+        S.Symbol "=" , S.Boolean True, S.Integer 10]) 
         (Nothing)
 
     test "Equal_To runSExpression Test 2" (runSExpression $ S.List [
-        S.Symbol "Equal_To" , S.Real 15.4, S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.2], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
+        S.Symbol "=" , S.Real 15.4, S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.1, S.Real 4.2]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.1]]]) 
         (Just $ S.Boolean True)    
 
     test "Equal_To runSExpression Test 3" (runSExpression $ S.List [
-         S.Symbol "Equal_To" , S.List [S.Symbol "Let", S.Symbol "x",
-          S.List [S.Symbol "+", S.Real 10.0, S.Real 4.0], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.0]], S.Integer 15]) 
+         S.Symbol "=" , S.List [S.Symbol "let", S.List [S.Symbol "x",
+          S.List [S.Symbol "+", S.Real 10.0, S.Real 4.0]], S.List [S.Symbol "+", S.Symbol "x", S.Real 1.0]], S.Integer 15]) 
         (Just $ S.Boolean True)      
 
     test "Equal_To runSExpression Test 4" (runSExpression $ S.List [
-        S.Symbol "Equal_To" , S.Integer 15, S.Integer 13]) 
+        S.Symbol "=" , S.Integer 15, S.Integer 13]) 
         (Just $ S.Boolean False)
 
     test "Equal_To runSExpression Test 5" (runSExpression $ S.List [
-        S.Symbol "Equal_To" , S.Integer 5, S.Integer 5]) 
+        S.Symbol "=" , S.Integer 5, S.Integer 5]) 
         (Just $ S.Boolean True) 
     
     test "Equal_To runSExpression Test 6" (runSExpression $ S.List [
-        S.Symbol "Equal_To" , S.Real 5.0, S.Integer 5]) 
+        S.Symbol "=" , S.Real 5.0, S.Integer 5]) 
         (Just $ S.Boolean True) 
 
     -- // Cond and Else tests
-    test "Cond runSExpression Test 1" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Boolean True, 
+    test "Cond runSExpression Test 1" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean True, 
         S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]], S.Symbol "Nothing"])
         (Just $ S.Integer 5)
 
-    test "Cond runSExpression Test 2" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 2" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean True, 
           S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.Symbol "Nothing"])
         (Just $ S.Integer 4)
         
-    test "Cond runSExpression Test 3" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 3" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean False, 
           S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]],
            S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
         (Just $ S.Integer 3)
 
-    test "Cond runSExpression Test 4" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 4" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean True, 
           S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
         (Just $ S.Integer 4)
 
-    test "Cond runSExpression Test 5" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Real 5.3, 
+    test "Cond runSExpression Test 5" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Real 5.3, 
         S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]], S.Symbol "Nothing"])
         (Nothing)
 
-    test "Cond runSExpression Test 6" (runSExpression $ S.List[S.Symbol "Cond", S.List[S.List[S.Integer 1, 
+    test "Cond runSExpression Test 6" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Integer 1, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean False, 
           S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
         (Nothing)
     
     -- // Complex Boolean tests
     test "Not runSExpression complex Test 1" (runSExpression $ S.List [
-        S.Symbol "Not" , S.List [S.Symbol "Or", S.Boolean True, S.Boolean True]]) 
+        S.Symbol "not" , S.List [S.Symbol "or", S.Boolean True, S.Boolean True]]) 
         (Just $ S.Boolean False)
 
     test "Not runSExpression complex Test 2" (runSExpression $ S.List [
-        S.Symbol "Not" , S.List [S.Symbol "And", S.Boolean True, S.Boolean True]]) 
+        S.Symbol "not" , S.List [S.Symbol "and", S.Boolean True, S.Boolean True]]) 
         (Just $ S.Boolean False)
 
     test "Not runSExpression complex Test 3" (runSExpression $ S.List [
-        S.Symbol "And" , S.List [S.Symbol "Not", S.Boolean True], 
-          S.List [S.Symbol "Or", S.Boolean False, S.Boolean True]]) 
+        S.Symbol "and" , S.List [S.Symbol "not", S.Boolean True], 
+          S.List [S.Symbol "or", S.Boolean False, S.Boolean True]]) 
         (Just $ S.Boolean False) 
 
      -- // Pair Tests 
 
     test "Pair runSExpression Test 1" (runSExpression $ S.List [
-       S.Symbol "Pair", S.Integer 10, S.Real 11.1
+       S.Symbol "pair", S.Integer 10, S.Real 11.1
      ]) (Just $ S.Dotted (S.Integer 10) (S.Real 11.1))  
 
     test "Pair runSExpression Test 2" (runSExpression $ S.List [
-       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+       S.Symbol "pair", S.List [S.Symbol "pair", S.Integer 15, S.Boolean True],
         S.Real 11.1]) 
         (Just $ S.Dotted (S.Dotted (S.Integer 15) (S.Boolean True)) (S.Real 11.1))   
 
     test "Pair runSExpression Test 3" (runSExpression $ S.List [
-      S.Symbol "Pair", S.List [S.Symbol "+", S.Boolean False, S.Boolean True],
+      S.Symbol "pair", S.List [S.Symbol "+", S.Boolean False, S.Boolean True],
       S.Integer 10]) (Nothing)
 
     -- // Left Tests 
 
     test "Left runSExpression Test 1" (runSExpression $ S.List [
-      S.Symbol "Left", S.Integer 10]) (Nothing)  
+      S.Symbol "left", S.Integer 10]) (Nothing)  
 
     test "Left runSExpression Test 2" (runSExpression $ S.List [
-      S.Symbol "Left", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+      S.Symbol "left", S.List [S.Symbol "pair", S.Real 5.5, S.Integer 10]]) 
        (Just (S.Real 5.5))    
 
-    test "Left runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Left", 
-      S.List [S.Symbol "Left", S.List [
-       S.Symbol "Pair", S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True],
+    test "Left runSExpression Test 3" (runSExpression $ S.List [S.Symbol "left", 
+      S.List [S.Symbol "left", S.List [
+       S.Symbol "pair", S.List [S.Symbol "pair", S.Integer 15, S.Boolean True],
         S.Real 11.1]]])
         (Just $ S.Integer 15)   
 
     -- // Right Tests 
 
     test "Right runSExpression Test 1" (runSExpression $ S.List [
-      S.Symbol "Right", S.Integer 10]) (Nothing)  
+      S.Symbol "right", S.Integer 10]) (Nothing)  
 
     test "Right runSExpression Test 2" (runSExpression $ S.List [
-      S.Symbol "Right", S.List [S.Symbol "Pair", S.Real 5.5, S.Integer 10]]) 
+      S.Symbol "right", S.List [S.Symbol "pair", S.Real 5.5, S.Integer 10]]) 
        (Just (S.Integer 10))    
 
-    test "Right runSExpression Test 3" (runSExpression $ S.List [S.Symbol "Right", 
-      S.List [S.Symbol "Right", S.List [
-       S.Symbol "Pair", S.Real 11.1 , 
-        S.List [S.Symbol "Pair", S.Integer 15, S.Boolean True]]]])
+    test "Right runSExpression Test 3" (runSExpression $ S.List [S.Symbol "right", 
+      S.List [S.Symbol "right", S.List [
+       S.Symbol "pair", S.Real 11.1 , 
+        S.List [S.Symbol "pair", S.Integer 15, S.Boolean True]]]])
         (Just $ S.Boolean True)     
 
     --Real_Pred tests
 
-    test "Real? runSExpression test  1" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Integer 1)]) (Just $ S.Boolean False)
+    test "Real? runSExpression test  1" (runSExpression $ S.List[(S.Symbol "real?"), (S.Integer 1)]) (Just $ S.Boolean False)
 
-    test "Real? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Real 1.0)]) (Just $ S.Boolean True)
+    test "Real? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "real?"), (S.Real 1.0)]) (Just $ S.Boolean True)
     
-    test "Real? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Real?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    test "Real? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "real?"), (S.Boolean True)]) (Just $ S.Boolean False)
     
-    test "Real? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Real?"), (S.List[S.Symbol "Right", 
-     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+    test "Real? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "real?"), (S.List[S.Symbol "right", 
+     (S.List[S.Symbol "pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
      (Just $ S.Boolean False)
     
      --Integer_Pred tests
 
-    test "Integer? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Integer 1)]) (Just $ S.Boolean True)
+    test "Integer? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "integer?"), (S.Integer 1)]) (Just $ S.Boolean True)
 
-    test "Integer? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    test "Integer? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "integer?"), (S.Real 1.0)]) (Just $ S.Boolean False)
     
-    test "Integer? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    test "Integer? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "integer?"), (S.Boolean True)]) (Just $ S.Boolean False)
     
-    test "Integer? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Integer?"), (S.List[S.Symbol "Right", 
-     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+    test "Integer? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "integer?"), (S.List[S.Symbol "right", 
+     (S.List[S.Symbol "pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
      (Just $ S.Boolean True)
 
     --Number_Pred tests
 
-    test "Number? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Integer 1)]) (Just $ S.Boolean True)
+    test "Number? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "number?"), (S.Integer 1)]) (Just $ S.Boolean True)
 
-    test "Number? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Real 1.0)]) (Just $ S.Boolean True)
+    test "Number? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "number?"), (S.Real 1.0)]) (Just $ S.Boolean True)
     
-    test "Number? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Number?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    test "Number? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "number?"), (S.Boolean True)]) (Just $ S.Boolean False)
     
-    test "Number? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Number?"), (S.List[S.Symbol "Right", 
-     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+    test "Number? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "number?"), (S.List[S.Symbol "right", 
+     (S.List[S.Symbol "pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
      (Just $ S.Boolean True)
 
     --Boolean_Pred tests
 
-    test "Boolean? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Integer 1)]) (Just $ S.Boolean False)
+    test "Boolean? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "boolean?"), (S.Integer 1)]) (Just $ S.Boolean False)
 
-    test "Boolean? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    test "Boolean? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "boolean?"), (S.Real 1.0)]) (Just $ S.Boolean False)
     
-    test "Boolean? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.Boolean True)]) (Just $ S.Boolean True) 
+    test "Boolean? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "boolean?"), (S.Boolean True)]) (Just $ S.Boolean True) 
     
-    test "Boolean? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Boolean?"), (S.List[S.Symbol "Right", 
-     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+    test "Boolean? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "boolean?"), (S.List[S.Symbol "right", 
+     (S.List[S.Symbol "pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
      (Just $ S.Boolean False)
 
     --Pair_Pred tests
 
-    test "Pair? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Integer 1)]) (Just $ S.Boolean False)
+    test "Pair? runSExpression test 1" (runSExpression $ S.List[(S.Symbol "pair?"), (S.Integer 1)]) (Just $ S.Boolean False)
 
-    test "Pair? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Real 1.0)]) (Just $ S.Boolean False)
+    test "Pair? runSExpression test 2" (runSExpression $ S.List[(S.Symbol "pair?"), (S.Real 1.0)]) (Just $ S.Boolean False)
     
-    test "Pair? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.Boolean True)]) (Just $ S.Boolean False)
+    test "Pair? runSExpression test 3" (runSExpression $ S.List[(S.Symbol "pair?"), (S.Boolean True)]) (Just $ S.Boolean False)
     
-    test "Pair? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "Pair?"), (S.List[S.Symbol "Right", 
-     (S.List[S.Symbol "Pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
+    test "Pair? runSExpression test 4" (runSExpression $ S.List[(S.Symbol "pair?"), (S.List[S.Symbol "right", 
+     (S.List[S.Symbol "pair", (S.List[S.Symbol "+", (S.Integer 2), (S.Integer 1)]), (S.Integer 4)])])])
      (Just $ S.Boolean False)
 
-    test "Pair? runSExpression test 5" (runSExpression $ S.List[S.Symbol "Pair?", S.List[S.Symbol "Pair", (S.Integer 1), (S.Integer 2)]])
+    test "Pair? runSExpression test 5" (runSExpression $ S.List[S.Symbol "pair?", S.List[S.Symbol "pair", (S.Integer 1), (S.Integer 2)]])
      (Just $ S.Boolean True)    
 
     -- Program tests 
     test "Program runSExpression test 1 one defun" (runSExpression $ S.List[S.Symbol "Program", S.List [S.List[S.Symbol "Defun", S.Symbol "incr", S.List [S.Symbol "x"], 
-     S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]]], S.List[S.Symbol "Call", S.Symbol "incr", 
-     S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [S.List [S.Symbol "Call", S.Symbol "incr", S.List [S.Integer 1]]]]]]]) 
+     S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]]], S.List[S.Symbol "call", S.Symbol "incr", 
+     S.List [S.List [S.Symbol "call", S.Symbol "incr", S.List [S.List [S.Symbol "call", S.Symbol "incr", S.List [S.Integer 1]]]]]]]) 
      (Just $ S.Integer 4)
 
     test "Program runSExpression test 2 one defun " (runSExpression sexpr_ex1) (Just $ S.Integer 4) 

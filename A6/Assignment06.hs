@@ -1,12 +1,12 @@
 {- |
 Module : Assignment05
-Description : Assignment 5 submission for CS 4400.
+Description : Assignment 6 submission for CS 4400.
 Copyright : (c) Michael Lanotte
                 Rachel Johanek 
 Maintainer : lanotte.m@northeastern.edu
              johanek.r@northeastern.edu 
 -}
-module Assignment05 where
+module Assignment06 where
 
 
 import Syntax
@@ -18,13 +18,15 @@ import Eval
       test_substTupleListHelper,
       test_subst,
       test_runSExpression )
+import Repl     
+
 
 --the main function runs all tests associated witht the files Syntax.hs and Eval.hs
 --this tests the functionality of all implemented methods involving converting between 
 --SExpression and protoscheme, as well as Program and SExpression, as well as evaluating
 --the values represented by protoscheme, Program, and SExpression data types
-main :: IO () 
-main = do 
+main_test :: IO () 
+main_test = do 
     (print "Test fromSExpression and its helper")
     Syntax.test_fromSExpressionTupleListHelper
     Syntax.test_fromSExpression
@@ -47,3 +49,7 @@ main = do
     Eval.test_runSExpression
     (print "Test evalProgram")
     Eval.test_evalProgram 
+
+-- Main function for the assignment is to call the main repl function. 
+main :: IO () 
+main = Repl.main 
