@@ -71,12 +71,12 @@ repl env = do
                                                         putStrLn ("Evaluation error. Try again.")
                                                         repl env
                                           Just v -> do 
-                                                       putStrLn (show (Syn.valueToSExpression v))  
-                                                       repl env          
+                                                        putStrLn (exprEvalToString v ) 
+                                                        repl env
+                                                    where 
+                                                         exprEvalToString :: Syn.ExprEval -> String 
+                                                         exprEvalToString (Syn.Eval_Pair l r) = "(" ++ (exprEvalToString l) ++ " . " ++ (exprEvalToString r) ++ ")"
+                                                         exprEvalToString (Syn.Eval_Integer x) = show x     
+                                                         exprEvalToString (Syn.Eval_Float x) = show x  
+                                                         exprEvalToString (Syn.Eval_Boolean x) = show x                                                                             
       
-
-main :: IO ()
-main = do
-    putStrLn "Welcome to the mostly useless calculator program."
-    repl []
-    return ()

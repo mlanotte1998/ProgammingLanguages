@@ -8,7 +8,7 @@ Maintainer : lanotte.m@northeastern.edu
 -}
 module Assignment06 where
 
-
+import Maps 
 import Syntax
 import Eval
     ( test_checkFloatEquality,
@@ -51,5 +51,8 @@ main_test = do
     Eval.test_evalProgram 
 
 -- Main function for the assignment is to call the main repl function. 
-main :: IO () 
-main = Repl.main 
+main :: IO ()
+main = do
+    putStrLn "Welcome to the ProtoScheme interactive REPL"
+    repl Maps.empty
+    return ()
