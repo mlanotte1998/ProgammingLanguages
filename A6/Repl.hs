@@ -93,8 +93,6 @@ repl env = do
                     -- the Syn.Expr is evaluated and printed to the user.                                       
                     input (Just (Expr v)) = case (E.eval env M.empty v) of 
                                           Nothing -> do 
-                                                        putStrLn (show v)
-                                                        putStrLn (show env)
                                                         putStrLn ("Evaluation error. Try again.")
                                                         repl env
                                           Just v -> do 

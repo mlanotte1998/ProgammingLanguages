@@ -1,5 +1,5 @@
 {- |
-Module : Assignment05
+Module : Assignment06
 Description : Assignment 6 submission for CS 4400.
 Copyright : (c) Michael Lanotte
                 Rachel Johanek 
