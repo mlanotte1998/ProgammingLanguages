@@ -49,8 +49,49 @@ main_test = do
     Eval.test_runSExpression
     (print "Test evalProgram")
     Eval.test_evalProgram 
+{-
+-- Examples of input and output expected 
+input_1 = (define x 10)
+output_1 = Variable x defined.
+Effect: x is saved in the enviroment with the definition 10
 
--- Main function for the assignment is to call the main repl function. 
+input_2 = (/ (* 100  14) (+ 10 1))
+output_2 = 127
+
+input_3 = (defun add-num (y) (+ x y))
+output_3 = Function add-num defined
+Effect: add-num is saved in the enviroment with the definition output = input + x
+
+input_4 = (add-num (1))
+input_4 = 11
+
+input_5 = (defun add-num (x) (+ x x))
+output_5 = Error: function add-num is already defined.
+
+input_6 = (if (< 1 2) 1 2)
+output_6 = 1
+
+--Common errors users may run into from mistakes in their input
+--lack of parentheses
+input_err1 = / (* 100  14) (+ 10 1)
+output_err1 = Parse error. Try again.
+
+--missing space
+input_err2 = (/ (*100 14) (+ 10 1))
+output_err2 = Div (Call "*100" [Integer 14]) (Add (Integer 10) (Integer 1))
+[("x",Define "x" (Integer 10))]
+Evaluation error. Try again.
+
+--operator not in prefix notation
+input_err3 = ( (*100 14) / (+ 10 1))
+output_err3 = Parse error. Try again.
+-}
+
+-- Main function for the assignment is to call the main repl function. The REPL function is
+-- an interactive loop that "Reads", "Evaluates", and "Prints" to the interacting user in real
+-- time. Our REPL evaluates mathematical expressions and stores variable and function definitions.
+-- For further elaboration of the functionality of repl view the examples above and the repl 
+-- purpose statement starting on line 17 of repl.hs
 main :: IO ()
 main = do
     putStrLn "Welcome to the ProtoScheme interactive REPL"

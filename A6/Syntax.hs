@@ -109,7 +109,7 @@ data Expr = Integer Integer
 --   followed by a single expression
 data Program = Program [GlobalDef] Expr
              deriving (Eq, Show)
--- | GlobalDef data type which can be either a function definition, introduced
+-- | GlobalDef data type which can be either a function definiti  on, introduced
 --    using defun, or a global variable definition, introduced using define
 data GlobalDef = Defun Variable (Variable, [Variable]) Expr
                | Define Variable Expr
