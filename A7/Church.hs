@@ -257,16 +257,22 @@ test_cifthen = do
 
 -- is a given numeral zero?
 ciszero :: Lambda
-ciszero = Lam "n" $ 
-  Var "n" `App` (Lam "x" $ toChurchBool False) `App` (toChurchBool True)
+ciszero = Lam "n" $ Var "n" `App` (Lam "x" $ toChurchBool False) `App` (toChurchBool True)
 
-test_ciszero = undefined                          -- TODO: complete tests
+test_ciszero = do
+    test "ciszero 0" (fromChurchBool $ normalize (App ciszero (toNumeral 0))) (Just True) 
+    test "ciszero 2" (fromChurchBool $ normalize (App ciszero (toNumeral 2))) (Just False) 
+    test "ciszero True" (fromChurchBool $ normalize (App ciszero (toChurchBool True))) Nothing --Nothing
 
 -- |"less or equal"
 cleq :: Lambda 
 cleq = lam ["m", "n"] $ ciszero `App` (cminus `App` Var "m" `App` Var "n")
 
-test_leq = undefined                              -- TODO: complete tests
+test_leq = do
+    test "cleq 3 4" (fromChurchBool $ normalize (App (App cleq (toNumeral 4)) (toNumeral 3))) (Just True)
+    test "cleq 8 8" (fromChurchBool $ normalize (App (App cleq (toNumeral 8)) (toNumeral 8))) (Just True)
+    test "cleq 5 4" (fromChurchBool $ normalize (App (App cleq (toNumeral 4)) (toNumeral 5))) (Just False)
+    test "cleq False 4" (fromChurchBool $ normalize (App (App cleq (toChurchBool False)) (toNumeral 4))) (Just False) --why not nothing or why not false for iszero
 
 -- |"less than"
 clt :: Lambda 
@@ -274,13 +280,23 @@ clt = lam ["m", "n"] $
     cand `App` (cleq `App` Var "m" `App` Var "n") 
          `App` (cnot `App` (ceq `App` Var "m" `App` Var "n"))
 
-test_clt = undefined                              -- TODO: complete tests
+test_clt = do
+    test "clt 3 4" (fromChurchBool $ normalize (App (App clt (toNumeral 4)) (toNumeral 3))) (Just True)
+    test "clt 8 8" (fromChurchBool $ normalize (App (App clt (toNumeral 8)) (toNumeral 8))) (Just False)
+    test "clt 5 4" (fromChurchBool $ normalize (App (App clt (toNumeral 4)) (toNumeral 5))) (Just False)
+    test "clt False 4" (fromChurchBool $ normalize (App (App clt (toChurchBool False)) (toNumeral 4))) (Just False) --another False
+
 
 -- |"greater than"
 cgt :: Lambda
 cgt = lam ["m", "n"] $ cnot `App` (cleq `App` Var "m" `App` Var "n")
 
-test_cgt = undefined                              -- TODO: complete tests
+test_cgt = do
+    test "cgt 3 4" (fromChurchBool $ normalize (App (App cgt (toNumeral 4)) (toNumeral 3))) (Just False)
+    test "cgt 8 8" (fromChurchBool $ normalize (App (App cgt (toNumeral 8)) (toNumeral 8))) (Just False)
+    test "cgt 5 4" (fromChurchBool $ normalize (App (App cgt (toNumeral 4)) (toNumeral 5))) (Just True)
+    --test "cgt False 4" (fromChurchBool $ normalize (App (App cgt (toChurchBool False)) (toNumeral 4))) (Just False)  --returns true?
+    test "cgt 2 True" (fromChurchBool $ normalize (App (App cgt (toNumeral 2)) (toChurchBool True))) (Just False) --another False
 
 -- |"equal" for natural numbers
 ceq :: Lambda
@@ -288,7 +304,12 @@ ceq = lam ["m", "n"] $
     cand `App` (cleq `App` Var "m" `App` Var "n")
          `App` (cleq `App` Var "n" `App` Var "m")
 
-test_ceq = undefined                              -- TODO: complete tests
+test_ceq = do 
+    test "ceq 3 4" (fromChurchBool $ normalize (App (App ceq (toNumeral 4)) (toNumeral 3))) (Just False)
+    test "ceq 8 8" (fromChurchBool $ normalize (App (App ceq (toNumeral 8)) (toNumeral 8))) (Just True)
+    test "ceq 5 4" (fromChurchBool $ normalize (App (App ceq (toNumeral 4)) (toNumeral 5))) (Just False)
+    test "ceq False 4" (fromChurchBool $ normalize (App (App ceq (toChurchBool False)) (toNumeral 4))) (Just False)
+    test "ceq 2 True" (fromChurchBool $ normalize (App (App ceq (toNumeral 2)) (toChurchBool True))) Nothing --Nothing, not Just False?
 
 -- |Pair constructor
 cpair :: Lambda
