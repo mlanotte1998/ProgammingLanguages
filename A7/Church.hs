@@ -315,19 +315,49 @@ test_ceq = do
 cpair :: Lambda
 cpair = lam ["l", "r", "s"] $ Var "s" `App` Var "l" `App` Var "r"
 
-test_cpair = undefined                            -- TODO: complete tests
+booleanPair :: Lambda
+booleanPair = (App (App (Lam "l" (Lam "r" (Lam "s" (App (App (Var "s") (Var "l")) (Var "r"))))) 
+                (Lam "t" (Lam "f" (Var "f")))) (Lam "t" (Lam "f" (Var "t"))))
+
+oneThreePair :: Lambda
+oneThreePair = (App (App (Lam "l" (Lam "r" (Lam "s" (App (App (Var "s") (Var "l")) (Var "r"))))) 
+                 cone) cthree)             
+
+complexPairLeft :: Lambda
+complexPairLeft = (App (App (Lam "l" (Lam "r" (Lam "s" (App (App (Var "s") (Var "l")) (Var "r"))))) 
+                booleanPair) ctwo)      
+
+complexPairRight :: Lambda
+complexPairRight = (App (App (Lam "l" (Lam "r" (Lam "s" (App (App (Var "s") (Var "l")) (Var "r"))))) 
+                ctwo) booleanPair)                           
+
+test_cpair = do 
+    test "cpair simple 1" (App (App cpair (toChurchBool False)) (toChurchBool True)) booleanPair
+    test "cpair simple 2" (App (App cpair (toNumeral 1)) (toNumeral 3)) oneThreePair
+    test "cpair complex 3" (App (App cpair booleanPair) (toNumeral 2)) complexPairLeft
+       
 
 -- |Left of a pair
 cleft :: Lambda
 cleft = Lam "p" $ Var "p" `App` lam ["l", "r"] (Var "l")
 
-test_cleft = undefined                            -- TODO: complete tests
+test_cleft = do
+    test "cleft booleanPair" (fromChurchBool $ normalize $ App cleft booleanPair) (Just False) 
+    test "cleft oneThreePair" (fromNumeral $ normalize $ App cleft oneThreePair) (Just 1)
+    test "cleft complexPairLeft 1" (normalize $ App cleft complexPairLeft) 
+     (Lam "s1" (App (App (Var "s1") (Lam "t" (Lam "f1" (Var "f1")))) (Lam "t1" (Lam "f" (Var "t1")))))
+    test "cleft complexPairLeft 2" (fromChurchBool $ normalize $ App cleft (App cleft complexPairLeft)) (Just False)
 
 -- |Right of a pair
 cright :: Lambda
 cright = Lam "p" $ Var "p" `App` lam ["l", "r"] (Var "r")
 
-test_cright = undefined                           -- TODO: complete tests
+test_cright =  do 
+    test "cright booleanPair" (fromChurchBool $ normalize $ App cright booleanPair) (Just True) 
+    test "cright oneThreePair" (fromNumeral $ normalize $ App cright oneThreePair) (Just 3)
+    test "cright complexPairLeft 1" (normalize $ App cright complexPairRight) 
+     (Lam "s1" (App (App (Var "s1") (Lam "t" (Lam "f1" (Var "f1")))) (Lam "t0" (Lam "f" (Var "t0")))))
+    test "cright complexPairLeft 2" (fromChurchBool $ normalize $ App cright (App cright complexPairRight)) (Just True)
 
 -- fixpoint combinator
 cfix :: Lambda
@@ -335,7 +365,27 @@ cfix = Lam "f" $
                  (Lam "x" $ Var "f" `App` (Var "x" `App` Var "x")) 
            `App` (Lam "x" $ Var "f" `App` (Var "x" `App` Var "x"))
 
-test_cfix = undefined                             -- TODO: complete tests
+-- cfact :: Lambda
+-- cfact = (Lam "f" (Lam "n" (App (App (App cifthen (Var "n")) (toNumeral 1)) (App (App ctimes (Var "n")) (App (Var "f") (App cpred (Var "n")))))))    
+
+-- fact n = App cfix (App cfact n)
+
+test_cfix = do
+    test "cfix test 1" (App cfix (toNumeral 2)) 
+     (App (Lam "f" (App (Lam "x" (App (Var "f") (App (Var "x") (Var "x")))) 
+                        (Lam "x" (App (Var "f") (App (Var "x") (Var "x")))))) 
+                    (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))))
+
+    test "cfix test 2" (stepNormal (App cfix (toNumeral 2)))
+     (Just (App (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) 
+                          (App (Var "x0") (Var "x0")))) 
+                (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) 
+                          (App (Var "x0") (Var "x0"))))))    
+
+    test "cfix test 3" (step (stepNormal (App cfix (toNumeral 2))))
+     (Just (App (Lam "s0" (Lam "z1" (App (Var "s0") (App (Var "s0") (Var "z1"))))) 
+           (App (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) (App (Var "x0") (Var "x0")))) 
+                (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) (App (Var "x0") (Var "x0")))))))                                  
 
 allTests :: IO ()
 allTests = do
