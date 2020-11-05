@@ -22,9 +22,11 @@ import SimpleTestsColor (test, testSection)
 lam :: [Variable] -> Lambda -> Lambda
 lam = flip $ foldr Lam
 
+-- |Lambda apply function
 app :: [Lambda] -> Lambda
 app es | not $ null es = foldl1 App es
 
+--Tests of function app
 test_lam_app = do
   test "lam [x, y, z] $ app [x, y, z]"
       (lam ["x", "y", "z"] $ app [Var "x", Var "y", Var "z"])
@@ -50,7 +52,7 @@ fromChurchBool (Lam x (Lam y (Var z))) =
         Nothing 
 fromChurchBool _ = Nothing                 
 
-
+--Tests of to and from ChurchBool
 test_bools = do 
     test "toChurchBool True" (toChurchBool True) (Lam "t" (Lam "f" (Var "t"))) 
     
@@ -102,6 +104,7 @@ fromNumeral (Lam x (Lam y e)) = fromNumeralAccumulator (Lam x (Lam y e)) 0
       fromNumeralAccumulator _ _ = Nothing 
 fromNumeral _ = Nothing                           
 
+--tests of to and from Numeral
 test_numerals = do
     test "toNumeral 0" (toNumeral 0) czero
 
@@ -131,6 +134,7 @@ csucc :: Lambda
 csucc = lam ["n", "s", "z"] $
     App (Var "s") (App (App (Var "n") (Var "s")) (Var "z"))
 
+--Tests of the method csucc
 test_csucc = do 
     test "(csucc ~0)" (fromNumeral $ normalize $ App csucc (toNumeral 0)) (Just 1)
 
@@ -149,6 +153,7 @@ cpred = Lam "n" (Lam "f" (Lam "x" (
               (Lam "u" (Var "x"))) 
             (Lam "u" (Var "u")))))
 
+--tests of the method cpred
 test_cpred = do        
     test "cpred 1" (fromNumeral $ normalize $ App cpred (toNumeral 1)) (Just 0)
 
@@ -179,6 +184,7 @@ test_cplus = do
 cminus :: Lambda
 cminus = lam ["m", "n"] $ Var "m" `App` cpred `App` Var "n"             
 
+--Tests of the method cminus
 test_cminus = do 
     test "(cminus ~4 ~3)"
         (fromNumeral (normalize (App (App cminus (toNumeral 3)) (toNumeral 4))))
@@ -191,32 +197,21 @@ test_cminus = do
         (Just 0)
 
 -- |Multiplication on naturals
--- plus = λm n. m succ n
--- cplus = lam ["m", "n"] $ Var "m" `App` csucc `App` Var "n"
--- times = λm n. m (plus n) zero
--- ctimes = lam ["m", "n"] $ Var "m" (`App` cplus `App` Var "n") z 
-
 ctimes :: Lambda
--- ctimes = lam ["m", "n"] $ Var "m" `App` (cplus `App` Var "n") `App` Var "z"   
 ctimes = (Lam "m" (Lam "n" (App (App (Var "m") (App cplus (Var "n"))) (toNumeral 0))))                 
 
+--Tests of ctimes
 test_ctimes = do
     test "(ctimes ~2 ~3)" (fromNumeral (normalize (App (App ctimes (toNumeral 2)) (toNumeral 3)))) (Just 6)                     
     test "(ctimes ~0 ~3)" (fromNumeral (normalize (App (App ctimes (toNumeral 0)) (toNumeral 3)))) (Just 0) 
     test "(ctimes ~4 ~1)" (fromNumeral (normalize (App (App ctimes (toNumeral 4)) (toNumeral 1)))) (Just 4) 
     test "(ctimes ~3 ~3)" (fromNumeral (normalize (App (App ctimes (toNumeral 3)) (toNumeral 3)))) (Just 9) 
 
--- |Boolean and
+-- |Boolean operator and
 cand :: Lambda
-{-
-λa b. if-else a b false
-= λa b. (λb t f. b t f) a b false
---> λa b. (λt f. a t f) b false
---> λa b. (λf. a b f) false
---> λa b. a b false
--}
 cand = (Lam "a" (Lam "b" (App (App (Var "a") (Var "b")) (toChurchBool False))))
 
+--tests of cand
 test_cand = do
     test "test cand t t" (fromChurchBool $ normalize $ App (App cand (toChurchBool True)) (toChurchBool True)) (Just True)
     test "test cand t f" (fromChurchBool $ normalize $ App (App cand (toChurchBool True)) (toChurchBool False)) (Just False)
@@ -228,6 +223,7 @@ test_cand = do
 cor :: Lambda 
 cor = (Lam "a" (Lam "b" (App (App (Var "a") (toChurchBool True)) (Var "b"))))
 
+--tests of cor
 test_cor = do
     test "test cor t t" (fromChurchBool $ normalize $ App (App cor (toChurchBool True)) (toChurchBool True)) (Just True)
     test "test cor t f" (fromChurchBool $ normalize $ App (App cor (toChurchBool True)) (toChurchBool False)) (Just True)
@@ -238,6 +234,7 @@ test_cor = do
 cnot :: Lambda
 cnot = (Lam "a" (App (App (Var "a") (toChurchBool False)) (toChurchBool True)))                           
 
+--tests of cnot
 test_cnot = do
     test "test cnot true" (fromChurchBool $ normalize (App cnot (toChurchBool True))) (Just False)
     test "test cnot false" (fromChurchBool $ normalize (App cnot (toChurchBool False))) (Just True)
@@ -246,6 +243,7 @@ test_cnot = do
 cifthen :: Lambda
 cifthen = lam ["b", "t", "f"] $ Var "b" `App` Var "t" `App` Var "f"
 
+--tests of cifthen
 test_cifthen = do
     test "test cifthen t t f" (fromChurchBool $ normalize $ App (App (App cifthen (toChurchBool True)) (toChurchBool True)) (toChurchBool False)) (Just True)
     test "test cifthen t 0 1" (fromNumeral $ normalize (App (App (App cifthen (toChurchBool True)) (toNumeral 0)) (toNumeral 1))) (Just 0)
@@ -259,6 +257,7 @@ test_cifthen = do
 ciszero :: Lambda
 ciszero = Lam "n" $ Var "n" `App` (Lam "x" $ toChurchBool False) `App` (toChurchBool True)
 
+--tests of ciszero
 test_ciszero = do
     test "ciszero 0" (fromChurchBool $ normalize (App ciszero (toNumeral 0))) (Just True) 
     test "ciszero 2" (fromChurchBool $ normalize (App ciszero (toNumeral 2))) (Just False) 
@@ -268,6 +267,7 @@ test_ciszero = do
 cleq :: Lambda 
 cleq = lam ["m", "n"] $ ciszero `App` (cminus `App` Var "m" `App` Var "n")
 
+--test of cleq
 test_leq = do
     test "cleq 3 4" (fromChurchBool $ normalize (App (App cleq (toNumeral 4)) (toNumeral 3))) (Just True)
     test "cleq 8 8" (fromChurchBool $ normalize (App (App cleq (toNumeral 8)) (toNumeral 8))) (Just True)
@@ -280,6 +280,7 @@ clt = lam ["m", "n"] $
     cand `App` (cleq `App` Var "m" `App` Var "n") 
          `App` (cnot `App` (ceq `App` Var "m" `App` Var "n"))
 
+--tests of clt
 test_clt = do
     test "clt 3 4" (fromChurchBool $ normalize (App (App clt (toNumeral 4)) (toNumeral 3))) (Just True)
     test "clt 8 8" (fromChurchBool $ normalize (App (App clt (toNumeral 8)) (toNumeral 8))) (Just False)
@@ -291,12 +292,12 @@ test_clt = do
 cgt :: Lambda
 cgt = lam ["m", "n"] $ cnot `App` (cleq `App` Var "m" `App` Var "n")
 
+--tests of cgt
 test_cgt = do
     test "cgt 3 4" (fromChurchBool $ normalize (App (App cgt (toNumeral 4)) (toNumeral 3))) (Just False)
     test "cgt 8 8" (fromChurchBool $ normalize (App (App cgt (toNumeral 8)) (toNumeral 8))) (Just False)
     test "cgt 5 4" (fromChurchBool $ normalize (App (App cgt (toNumeral 4)) (toNumeral 5))) (Just True)
-    --test "cgt False 4" (fromChurchBool $ normalize (App (App cgt (toChurchBool False)) (toNumeral 4))) (Just False)  --returns true?
-    test "cgt 2 True" (fromChurchBool $ normalize (App (App cgt (toNumeral 2)) (toChurchBool True))) (Just False) --another False
+    test "cgt 2 True" (fromChurchBool $ normalize (App (App cgt (toNumeral 2)) (toChurchBool True))) (Just False)
 
 -- |"equal" for natural numbers
 ceq :: Lambda
@@ -304,6 +305,7 @@ ceq = lam ["m", "n"] $
     cand `App` (cleq `App` Var "m" `App` Var "n")
          `App` (cleq `App` Var "n" `App` Var "m")
 
+--tests of ceq
 test_ceq = do 
     test "ceq 3 4" (fromChurchBool $ normalize (App (App ceq (toNumeral 4)) (toNumeral 3))) (Just False)
     test "ceq 8 8" (fromChurchBool $ normalize (App (App ceq (toNumeral 8)) (toNumeral 8))) (Just True)
@@ -331,6 +333,7 @@ complexPairRight :: Lambda
 complexPairRight = (App (App (Lam "l" (Lam "r" (Lam "s" (App (App (Var "s") (Var "l")) (Var "r"))))) 
                 ctwo) booleanPair)                           
 
+--tests of cpair simple and complex
 test_cpair = do 
     test "cpair simple 1" (App (App cpair (toChurchBool False)) (toChurchBool True)) booleanPair
     test "cpair simple 2" (App (App cpair (toNumeral 1)) (toNumeral 3)) oneThreePair
@@ -341,6 +344,7 @@ test_cpair = do
 cleft :: Lambda
 cleft = Lam "p" $ Var "p" `App` lam ["l", "r"] (Var "l")
 
+--Tests of cleft
 test_cleft = do
     test "cleft booleanPair" (fromChurchBool $ normalize $ App cleft booleanPair) (Just False) 
     test "cleft oneThreePair" (fromNumeral $ normalize $ App cleft oneThreePair) (Just 1)
@@ -352,6 +356,7 @@ test_cleft = do
 cright :: Lambda
 cright = Lam "p" $ Var "p" `App` lam ["l", "r"] (Var "r")
 
+--Tests of cright
 test_cright =  do 
     test "cright booleanPair" (fromChurchBool $ normalize $ App cright booleanPair) (Just True) 
     test "cright oneThreePair" (fromNumeral $ normalize $ App cright oneThreePair) (Just 3)
@@ -365,11 +370,7 @@ cfix = Lam "f" $
                  (Lam "x" $ Var "f" `App` (Var "x" `App` Var "x")) 
            `App` (Lam "x" $ Var "f" `App` (Var "x" `App` Var "x"))
 
--- cfact :: Lambda
--- cfact = (Lam "f" (Lam "n" (App (App (App cifthen (Var "n")) (toNumeral 1)) (App (App ctimes (Var "n")) (App (Var "f") (App cpred (Var "n")))))))    
-
--- fact n = App cfix (App cfact n)
-
+--tests of cfix
 test_cfix = do
     test "cfix test 1" (App cfix (toNumeral 2)) 
      (App (Lam "f" (App (Lam "x" (App (Var "f") (App (Var "x") (Var "x")))) 
@@ -387,6 +388,7 @@ test_cfix = do
            (App (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) (App (Var "x0") (Var "x0")))) 
                 (Lam "x0" (App (Lam "s" (Lam "z" (App (Var "s") (App (Var "s") (Var "z"))))) (App (Var "x0") (Var "x0")))))))                                  
 
+-- All tests of Church functionality
 allTests :: IO ()
 allTests = do
     test_lam_app
