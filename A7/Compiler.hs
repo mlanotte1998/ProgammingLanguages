@@ -44,7 +44,6 @@ import SimpleTestsColor (test, testSection)
 -}
 
 
-
 -- |Compile a protoScheme expression into PLC
 compile :: Syntax.Expr -> Maybe L.Lambda
 compile (Syntax.Integer x) = Just (toNumeral x)
@@ -256,23 +255,23 @@ test_compileProgram = do
        (Program [Defun "func" ("x", []) (Add (Syntax.Integer 5) (Var "x"))] (Call "func" [Syntax.Integer 10]))))))
        (Just 15) 
     test "Compile defun and call test 2" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-     (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10, Syntax.Integer 5]))))))
-      (Just 5)  
+       (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10, Syntax.Integer 5]))))))
+       (Just 5)  
     test "Compile defun and call test 3" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-     (Program [Defun "func" ("x", ["y", "z"]) 
+      (Program [Defun "func" ("x", ["y", "z"]) 
       (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "func" [Syntax.Integer 10, Syntax.Integer 5, Syntax.Integer 2]))))))
-     (Just 10) 
+      (Just 10) 
 
     test "Compile defun and call test 4" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-     (Program [Defun "func" ("x", ["y", "z"]) (Add (Syntax.Integer 5) (Var "x"))] (Call "func" [Syntax.Integer 10]))))))
+      (Program [Defun "func" ("x", ["y", "z"]) (Add (Syntax.Integer 5) (Var "x"))] (Call "func" [Syntax.Integer 10]))))))
       (Nothing) 
     test "Compile defun and call test 5" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-     (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10]))))))
+      (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10]))))))
       (Nothing)  
     test "Compile defun and call test 6" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-     (Program [Defun "func" ("x", ["y", "z"]) 
+      (Program [Defun "func" ("x", ["y", "z"]) 
       (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "notFunc" [Syntax.Integer 10, Syntax.Integer 5, Syntax.Integer 2]))))))
-     (Nothing)                
+      (Nothing)                
 
     test "CompileProgram Define test 1" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [Define "var" (Integer 10)] (Integer 11)))))) (Just 11)
     test "CompileProgram Define test 2" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [Define "var" (Integer 10)] (Var "var")))))) (Just 10)
