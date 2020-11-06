@@ -3,10 +3,12 @@ Module      :  Church
 Description :  Church encodings of values and operations.
                Fixpoint operator.
 Copyright   : (c) Ferd, 2020
-              (c) <your names>
+              (c) Michael Lanotte
+              (c) Rachel Johanek
 
 Maintainer  : f.vesely@northeastern.edu 
-              <your emails>
+              lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
 -}
 
 

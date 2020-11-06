@@ -8,13 +8,17 @@ Maintainer : lanotte.m@northeastern.edu
 -}
 
 module Assignment07 where
-    import Church 
-    import Compiler
+
+import Church 
+import Compiler
 
 -- Solutions to question 7, our counts returned by normalizeWithCount
 -- when run on the compiled factorial program with input 4 in Compiler.test_Program
---  fact4stepsBefore = 5938;
--- fact4stepsAfter = 3822;
+fact4stepsBefore = 5938;
+fact4stepsAfter = 3822;
+facts5stepsBefore = 39390
+fact5stepsAfter = 26306
+
 
 --the main function runs all tests we wrote for the functionality of Church.hs and Compiler.hs
 --including all implemented conversions and methods in Church and compile, compileProgram, and

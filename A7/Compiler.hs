@@ -1,9 +1,10 @@
 {- |
 Module      :  Compiler
 Description :  Compiler from protoScheme into Pure Lambda Calculus (PLC).
-Copyright   :  (c) <your names>
-
-Maintainer  : <your emails>
+Copyright : (c) Michael Lanotte
+                Rachel Johanek 
+Maintainer : lanotte.m@northeastern.edu
+             johanek.r@northeastern.edu
 -}
 
 module Compiler 
@@ -12,8 +13,6 @@ module Compiler
     , factorialProgram
     , Compiler.allTests
     ) where
-
-import Eval 
 
 import Syntax
 import Church
@@ -117,7 +116,7 @@ compile (Equal_To x y) =
          _ -> Nothing   
 compile (Call x y) = compileCallHelper x y 
     where 
-        -- This helper goes through lists of Expressions
+        -- This helper goes through lists of Expressions args and applies them to the expression 
         compileCallHelper :: Variable -> [Syntax.Expr] -> Maybe L.Lambda
         compileCallHelper v [] = Just (L.Var v)
         compileCallHelper v (x:xs) = case compile x of 
@@ -226,70 +225,85 @@ test_compile = do
     test "Compile = test Nothing 1" (compile (Equal_To (Float 5.5) (Integer 10))) (Nothing)
     test "Compile = test Nothing 2" (compile (Equal_To (Boolean True) (Pair_Pred (Integer 10)))) (Nothing)
       
+-- ==========================================================================================================
 
 -- |Compile the given protoScheme program into PLC
 compileProgram :: Program -> Maybe L.Lambda
-compileProgram (Program [] x) = compile x 
+compileProgram (Program [] x) = compile x                                                                                                                  
+compileProgram (Program ((Define v x): xs) e) = case compileProgram (Program xs e) of
+                                                     Just a -> case compile x of 
+                                                         Just b -> (Just (L.App (L.Lam v a) b))
+                                                         _ -> Nothing
+                                                     _ -> Nothing
+-- If the program list front element is defun then call helper function on the defun  
+-- and recursively call compile program on the rest.                                                    
 compileProgram (Program ((Defun v (v1, vlist) e): xs) y) = case compileProgramDefun (Defun v (v1, reverse (vlist)) e) of 
                                                                 Just a -> case compileProgram (Program xs y) of 
                                                                                Just b -> (Just (L.App (L.Lam v b) (L.App cfix (L.Lam v a)))) 
                                                                                Nothing -> Nothing
                                                                 Nothing -> Nothing 
     where 
-        --This helper iterates through lists in Defun
+        --This helper iterates through the list of variables in Defun and applies them. 
         compileProgramDefun :: GlobalDef -> Maybe L.Lambda
         compileProgramDefun (Defun v (arg1, []) e) = case compile e of 
+                                                        -- normalize on the compile of e which is the body of the function.  
                                                         Just a -> Just (L.Lam arg1 $ normalize a)
                                                         _ -> Nothing
         compileProgramDefun (Defun v (arg1, (x:xs)) e) = case compileProgramDefun (Defun v (arg1, xs) e) of 
+                                                              -- apply the variable   
                                                               Just a -> Just (L.Lam x a)
-                                                              _ -> Nothing                                                                                                                     
-compileProgram (Program ((Define v x): xs) e) = case compileProgram (Program xs e) of
-                                                     Just a -> case compile x of 
-                                                         Just b -> (Just (L.App (L.Lam v a) b))
-                                                         _ -> Nothing
-                                                     _ -> Nothing
+                                                              _ -> Nothing                                                         
                     
 
 --Tests of compileProgram
 test_compileProgram = do 
     test "CompileProgram defun and call test 1" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-       (Program [Defun "func" ("x", []) (Add (Syntax.Integer 5) (Var "x"))] (Call "func" [Syntax.Integer 10]))))))
+       (Program [Defun "func" ("x", []) (Add (Integer 5) (Var "x"))] (Call "func" [Integer 10]))))))
        (Just 15) 
     test "CompileProgram defun and call test 2" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-       (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10, Syntax.Integer 5]))))))
+       (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Integer 10, Integer 5]))))))
        (Just 5)  
     test "CompileProgram defun and call test 3" (fromNumeral (normalize (compileNoMaybe (compileProgram 
       (Program [Defun "func" ("x", ["y", "z"]) 
-      (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "func" [Syntax.Integer 10, Syntax.Integer 5, Syntax.Integer 2]))))))
+      (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "func" [Integer 10, Integer 5, Integer 2]))))))
       (Just 10) 
 
     test "CompileProgram defun and call test 4" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-      (Program [Defun "func" ("x", ["y", "z"]) (Add (Syntax.Integer 5) (Var "x"))] (Call "func" [Syntax.Integer 10]))))))
+      (Program [Defun "func" ("x", ["y", "z"]) (Add (Integer 5) (Var "x"))] (Call "func" [Integer 10]))))))
       (Nothing) 
     test "CompileProgram defun and call test 5" (fromNumeral (normalize (compileNoMaybe (compileProgram 
-      (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Syntax.Integer 10]))))))
+      (Program [Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y"))] (Call "func" [Integer 10]))))))
       (Nothing)  
     test "CompileProgram defun and call test 6" (fromNumeral (normalize (compileNoMaybe (compileProgram 
       (Program [Defun "func" ("x", ["y", "z"]) 
-      (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "notFunc" [Syntax.Integer 10, Syntax.Integer 5, Syntax.Integer 2]))))))
+      (Mul (Var "z") (Sub (Var "x") (Var "y")))] (Call "notFunc" [Integer 10, Integer 5, Integer 2]))))))
       (Nothing)                
 
-    test "CompileProgram Define test 1" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [Define "var" (Syntax.Integer 10)] (Syntax.Integer 11)))))) (Just 11)
-    test "CompileProgram Define test 2" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [Define "var" (Integer 10)] (Var "var")))))) (Just 10)
-    test "CompileProgram Define test 3" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [Define "x" (Var "y")] (Call "y" [Var "y"])))))) (Nothing)
-    test "CompileProgram Define test 4" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [(Define "var" (Integer 10)), 
-      (Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y")))] (Call "func" [Syntax.Var "var", Syntax.Integer 5])))))) (Just 5) 
-    test "CompileProgram Define test 5" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [(Defun "func" ("x", ["y", "z"]) (Mul (Var "z") (Sub (Var "x") (Var "y")))),
-      (Define "var" (Integer 10))] (Call "func" [Syntax.Var "var", Syntax.Integer 5, Syntax.Integer 2])))))) (Just 10) 
-    test "CompileProgram Define test 6" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [(Define "x" (Syntax.Integer 1)), (Define "x" (Syntax.Integer 2))] (Var "x"))))))
+    test "CompileProgram Define test 1" (fromNumeral (normalize (compileNoMaybe (compileProgram 
+     (Program [Define "var" (Integer 10)] (Integer 11)))))) (Just 11)
+    test "CompileProgram Define test 2" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [Define "var" (Integer 10)] (Var "var")))))) (Just 10)
+    test "CompileProgram Define test 3" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [Define "x" (Var "y")] (Call "y" [Var "y"])))))) (Nothing)
+    test "CompileProgram Define test 4" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [(Define "var" (Integer 10)), 
+      (Defun "func" ("x", ["y"]) (Sub (Var "x") (Var "y")))] (Call "func" [Var "var", Integer 5])))))) (Just 5) 
+    test "CompileProgram Define test 5" (fromNumeral (normalize (compileNoMaybe (compileProgram 
+     (Program [(Defun "func" ("x", ["y", "z"]) (Mul (Var "z") (Sub (Var "x") (Var "y")))),
+      (Define "var" (Integer 10))] (Call "func" [Var "var", Integer 5, Integer 2])))))) (Just 10) 
+    test "CompileProgram Define test 6" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [(Define "x" (Integer 1)), (Define "x" (Integer 2))] (Var "x"))))))
       (Just 2)
-    test "CompileProgram Define test 7" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [(Define "x" (Var "y")), 
-      (Defun "countdownTo1" ("x", []) (If (Equal_To (Var "x") (Syntax.Integer 1)) (Var "x") (Call "countdownto1" [Sub (Var "x") (Syntax.Integer 1)])))]
+    test "CompileProgram Define test 7" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [(Define "x" (Var "y")), 
+      (Defun "countdownTo1" ("x", []) (If (Equal_To (Var "x") (Integer 1)) (Var "x") 
+      (Call "countdownto1" [Sub (Var "x") (Integer 1)])))]
       (Call "countdownTo1" [(Var "x")])))))) (Nothing)
-    -- test "CompileProgram Define test 8" (fromNumeral (normalize (compileNoMaybe (compileProgram (Program [(Define "x" (Syntax.Integer 3)), 
-    --   (Defun "countdownTo1" ("x", []) (If (Equal_To (Var "x") (Syntax.Integer 1)) (Var "x") (Call "countdownto1" [Sub (Var "x") (Syntax.Integer 1)])))]
-    --   (Call "countdownTo1" [Syntax.Var "x"])))))) (Just 1)
+    test "CompileProgram Define test 8" (fromNumeral (normalize (compileNoMaybe 
+     (compileProgram (Program [(Define "x" (Integer 3)), 
+       (Defun "countdownTo1" ("x", []) (If (Equal_To (Var "x") (Integer 1)) (Var "x") 
+       (Call "countdownTo1" [Sub (Var "x") (Integer 1)])))]
+       (Call "countdownTo1" [Var "x"])))))) (Just 1)
     
 
 -- |Generate the source code of a program calculating the factorial of the
@@ -300,7 +314,7 @@ factorialProgram number =
 
 --test of factorialProgram
 test_factorial = do 
-     case parseSExpression $ factorialProgram 2 of 
+     case parseSExpression $ factorialProgram 5 of 
          Just a -> case (normalizeWithCount (compileNoMaybe (compileProgram (programFromSExpression a)))) of 
              (lam, count) -> show count ++ " " ++ show (fromNumeral lam)
 
