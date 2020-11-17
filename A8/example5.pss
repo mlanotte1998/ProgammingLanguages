@@ -1,0 +1,9 @@
+(defun compose (f g) 
+  (lambda (x) (f (g x))))
+
+(let (double (lambda (x) (* 2 x)))
+  (let (negate (lambda (x) (- 0 x)))
+    (let (as-pair (lambda (x) (pair x (negate x))))
+      ((compose as-pair (compose negate double)) 12))))
+
+;; vim: ft=lisp

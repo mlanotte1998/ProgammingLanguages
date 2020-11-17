@@ -1,0 +1,6 @@
+(defun pair-map (f p) 
+  (pair (f (left p)) (f (right p))))
+
+(pair-map (lambda (x) (* 2 x)) (pair 11 -2.5))
+
+;; vim: ft=lisp

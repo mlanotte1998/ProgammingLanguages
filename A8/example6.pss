@@ -1,0 +1,11 @@
+(defun zero? (n) (= n 0))
+
+(defun ackermann (m n) 
+  (cond [(zero? m) (+ n 1)]
+        [(and (> m 0) (zero? n)) (ackermann (- m 1) 1)]
+        [else (ackermann (- m 1) (ackermann m (- n 1)))]))
+
+(pair (ackermann 2 42)
+      (ackermann 3 6))
+
+;; vim: ft=lisp

@@ -1,0 +1,13 @@
+(defun even? (n) 
+  (and (integer? n)
+       (or (= n 0)
+           (odd? (- n 1)))))
+
+(defun odd? (n)
+  (and (integer? n)
+       (and (not (= n 0))
+            (even? (- n 1)))))
+
+(pair (odd? 42) (even? 42))
+
+;; vim: ft=lisp

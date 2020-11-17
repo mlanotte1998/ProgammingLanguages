@@ -1,0 +1,6 @@
+(defun pair-apply (f p)
+  (f (left p) (right p)))
+
+(pair-apply + (pair 13 -2))
+
+;; vim: ft=lisp
