@@ -22,4 +22,9 @@ main = do
     Syntax.test_valueToSExpression
     Syntax.test_toSExpression
     Syntax.test_toSExpressionTupleListHelper
+    Eval.test_checkFloatEquality
+    Eval.test_evalProgram
+    Eval.test_eval
+    Eval.test_evalTupleListHelper
+    Eval.test_runSExpression
 
