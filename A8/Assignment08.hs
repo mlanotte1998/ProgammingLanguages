@@ -9,13 +9,18 @@ Maintainer : lanotte.m@northeastern.edu
 
 module Assignment08 where
 
+import Maps
 
 import Syntax     
 
 import Eval 
 
-main :: IO () 
-main = do 
+import Repl 
+
+
+
+allTests :: IO () 
+allTests = do 
     Syntax.test_fromSExpression
     Syntax.test_fromSExpressionTupleListHelper
     Syntax.test_programFromSExpression
@@ -27,4 +32,10 @@ main = do
     Eval.test_eval
     Eval.test_evalTupleListHelper
     Eval.test_runSExpression
+    Eval.test_runProgram
 
+main :: IO ()
+main = do
+    putStrLn "Welcome to the ProtoScheme interactive REPL"
+    repl Syntax.builtins
+    return ()

@@ -16,14 +16,16 @@ module Parser
 
 import qualified SExpression as S
 
-import SimpleTests (test, beginTests, endTests, testSection)
+import Result
+
 
 import Control.Applicative
 import Data.Char (isDigit, isAlpha, isLower, isUpper, isSpace)
 
+import SimpleTests (test, beginTests, endTests, testSection)
 
 -- * Parse an s-expression:
-parseSExpression :: MonadFail m => String -> m S.Expr
+parseSExpression :: String -> Result S.Expr
 parseSExpression s = 
     case filter (null . snd) $ parse (only sexpr) (removeComments s) of
          (sexpr, "") : _ -> return sexpr
@@ -31,14 +33,14 @@ parseSExpression s =
 
 
 -- | Parse one or more s-expressions and
-parseSExpressions :: MonadFail m => String -> m [S.Expr]
+parseSExpressions :: String -> Result [S.Expr]
 parseSExpressions s = 
     case filter (null . snd) $ parse (only sexprs) (removeComments s) of
          (sexprs, "") : _ -> return sexprs
          _ -> fail "Couldn't parse s-expression."
 
 -- | Parse a file of s-expressions
-fromFile :: MonadFail m => String -> IO (m [S.Expr])
+fromFile :: String -> IO (Result [S.Expr])
 fromFile filename = parseSExpressions <$> readFile filename
 
 
