@@ -1,6 +1,6 @@
 {- |
-Module : Assignment07
-Description : Assignment 7 submission for CS 4400.
+Module : Assignment08
+Description : Assignment 8 submission for CS 4400.
 Copyright : (c) Michael Lanotte
                 Rachel Johanek 
 Maintainer : lanotte.m@northeastern.edu

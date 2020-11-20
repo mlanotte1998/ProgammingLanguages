@@ -1,3 +1,13 @@
+{-|
+Module      : Repl
+Description : Repl function for passing arguments in to parser and evaluating them. 
+Copyright   : (c) Michael Lanotte, 2020
+                  Rachel Johanek, 2020
+Maintainer  : lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
+
+-}
+
 module Repl where 
 
 import qualified Maps as M
