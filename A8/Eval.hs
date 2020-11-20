@@ -120,7 +120,7 @@ eval g m (Val (Integer i)) = return (Integer i)
 eval g m (Val (Float d)) = return (Float d)
 eval g m (Val (Boolean b)) = return (Boolean b)
 --Handles and expressions, evaluates first, if True, check second
---if either is false, fail
+--if either is false, returns false. Fails if either arg is not a Boolean.
 eval g m (And e1 e2) = do 
     v1 <- eval g m e1 
     case v1 of 
@@ -131,9 +131,8 @@ eval g m (And e1 e2) = do
                 _ -> fail "And not passed a boolean for second argument."
         Boolean False -> return (Boolean False)
         _ -> fail "And not passed a boolean for first argument."
---Handles and expressions, evaluates first, if True, return True
---else check second
---if either is false, fail
+--Handles or expressions, evaluates first, if True returns True
+--else return value of second. Fails if either arg is not a Boolean.
 eval g m (Or e1 e2) = do 
     v1 <- eval g m e1 
     case v1 of 
@@ -143,14 +142,18 @@ eval g m (Or e1 e2) = do
             case v2 of 
                 Boolean b -> return (Boolean b)
                 _ -> fail "Or not passed a boolean for second argument."
-        _ -> fail "Or not passed a boolean for first argument."        
+        _ -> fail "Or not passed a boolean for first argument."    
+--Gets values of defined variables. Fails if undefined.    
 eval g m (Var x) =
     case get m x of
          Just v -> return v
          _ -> case get g x of 
                    Just v -> return v
-                   _ -> fail $ "Variable " ++ x ++ " not defined."     
+                   _ -> fail $ "Variable " ++ x ++ " not defined."    
+--Returns value of Lambda expression by turning it into Value type Closure 
 eval g m (Lambda x e) = return $ Closure x e m    
+--Evaluates a function call applied to its given arguments and fails
+--if the arguments are inappropriate or no function is present
 eval g m (App (x:xs)) = do 
     v <- eval g m x
     case v of 
@@ -170,10 +173,13 @@ eval g m (App (x:xs)) = do
             callOp op (x:xs) vals = do 
                 x' <- eval g m x 
                 callOp op xs (vals ++ [x'])
-
+--Sets the given variable to its corresponding value
+--in the given environment and evaluates
 eval g m (Let x e1 e2) = do
      v1 <- eval g m e1
-     eval g (set m x v1) e2                             
+     eval g (set m x v1) e2  
+--Returns evaluated e2 if e1 represents True, e3 if e1 represents False     
+--Fails if e1 is not a Boolean        
 eval g m (If e1 e2 e3) = do
       b <- eval g m e1
       case b of 
@@ -182,43 +188,53 @@ eval g m (If e1 e2 e3) = do
                     else eval g m e3
           _ -> fail "If not passed a boolean for first expression."          
 eval g m (Cond x y) = evalTupleListHelper g m x y 
+--Returns a Pair with two evaluated Expressions (Results) stored in it
 eval g m (Pair e1 e2) = do 
     v1 <- eval g m e1
     v2 <- eval g m e2 
-    return (PairVal v1 v2)       
+    return (PairVal v1 v2)   
+--Returns the left element of a pair
+--Fails if a pair is not given          
 eval g m (Left l ) = do 
     v <- eval g m l 
     case v of 
         PairVal left right -> do 
             return left
-        _ -> fail $ "Left not applied to pair."          
+        _ -> fail $ "Left not applied to pair."  
+--Returns the right element of a pair
+--Fails if a pair is not given      
 eval g m (Right l ) = do
     v <- eval g m l 
     case v of 
         PairVal left right -> do 
             return right
-        _ -> fail $ "Right not applied to pair."          
+        _ -> fail $ "Right not applied to pair."  
+--If the argument is a Float returns true, otherwise false           
 eval g m (Real_Pred e) = do 
     v <- eval g m e 
     case v of 
         (Float _) -> return (Boolean True)
-        _ -> return (Boolean False)                          
+        _ -> return (Boolean False)  
+--If the argument is an Integer returns true, otherwise false                           
 eval g m (Integer_Pred e) = do 
     v <- eval g m e 
     case v of 
         (Integer _) -> return (Boolean True)
         _ -> return (Boolean False)
+--If the argument is a Float or an Integer returns true, otherwise false   
 eval g m (Number_Pred e) = do 
     v <- eval g m e 
     case v of 
         (Float _) -> return (Boolean True)
         (Integer _) -> return (Boolean True)
-        _ -> return (Boolean False)                      
+        _ -> return (Boolean False)  
+--If the argument is a Boolean returns true, otherwise false                       
 eval g m (Boolean_Pred e) = do 
     v <- eval g m e 
     case v of 
         (Boolean _ ) -> return (Boolean True)
-        _ -> return(Boolean False)                                             
+        _ -> return(Boolean False)    
+--If the argument is a PairVal returns true, otherwise false                                         
 eval g m (Pair_Pred e) = do 
     v <- eval g m e 
     case v of 
