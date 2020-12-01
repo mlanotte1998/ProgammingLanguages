@@ -1,0 +1,25 @@
+(x : Integer)
+(define x 12)
+
+(y : Boolean)
+(define y (and (not (= x 11)) #f))
+
+(z : (Pair-of Integer Boolean))
+(define z (pair x y))
+
+(twice : (-> (-> Integer Integer) Integer Integer))
+(defun twice (f x)
+  (f (f x)))
+
+(iterate : (-> (-> Integer Integer) Integer Integer Integer))
+(defun iterate (f n x)
+  (if (= n 0)
+    x
+    (iterate f (- n 1) (f x))))
+
+(let (n 4)
+  (let (add-2 (lambda ([x : Integer]) (+ x 2)))
+    (pair (iterate add-2 n 10)
+          (twice add-2 (twice add-2 10)))))
+
+;; vim: ft=lisp

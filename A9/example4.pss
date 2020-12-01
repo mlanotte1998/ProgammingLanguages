@@ -1,0 +1,13 @@
+(boolean->integer : (-> Boolean Integer))
+(defun boolean->integer (x) 
+  (if x 1 0))
+
+(integer->boolean : (-> Integer Boolean))
+(defun integer->boolean (x)
+  (if (= x 0)
+    #t
+    #f))
+
+(pair integer->boolean boolean->integer) ;; : (Pair-of (-> Integer Boolean) (-> Boolean Integer))
+
+;; vim: ft=lisp

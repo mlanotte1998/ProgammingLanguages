@@ -1,0 +1,297 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Maps
+Description : An implementation of maps as association lists
+Copyright   : (c) Ferd, 2020
+Maintainer  : f.vesely@northeastern
+
+This module provides an implementation of maps. 
+
+-}</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Maps</span><span> </span><span>
+</span><span id="line-12"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Maps.html#empty"><span class="hs-identifier">empty</span></a></span><span>
+</span><span id="line-13"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#get"><span class="hs-identifier">get</span></a></span><span>
+</span><span id="line-14"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#set"><span class="hs-identifier">set</span></a></span><span>
+</span><span id="line-15"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#keys"><span class="hs-identifier">keys</span></a></span><span>
+</span><span id="line-16"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#fromList"><span class="hs-identifier">fromList</span></a></span><span>
+</span><span id="line-17"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#toList"><span class="hs-identifier">toList</span></a></span><span>
+</span><span id="line-18"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier">Map</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">nub</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SimpleTests.html"><span class="hs-identifier">SimpleTests</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SimpleTests.html#test"><span class="hs-identifier">test</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">newtype</span><span> </span><span id="Map"><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span></span><span> </span><span id="local-6989586621679043654"><span class="annot"><a href="#local-6989586621679043654"><span class="hs-identifier hs-type">k</span></a></span></span><span> </span><span id="local-6989586621679043653"><span class="annot"><a href="#local-6989586621679043653"><span class="hs-identifier hs-type">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Map"><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679043654"><span class="hs-identifier hs-type">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679043653"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-26"></span><span>                </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679043609"><span id="local-6989586621679043611"><span class="annot"><span class="annottext">Map k v -&gt; Map k v -&gt; Bool
+(Map k v -&gt; Map k v -&gt; Bool)
+-&gt; (Map k v -&gt; Map k v -&gt; Bool) -&gt; Eq (Map k v)
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+forall k v. (Eq k, Eq v) =&gt; Map k v -&gt; Map k v -&gt; Bool
+/= :: Map k v -&gt; Map k v -&gt; Bool
+$c/= :: forall k v. (Eq k, Eq v) =&gt; Map k v -&gt; Map k v -&gt; Bool
+== :: Map k v -&gt; Map k v -&gt; Bool
+$c== :: forall k v. (Eq k, Eq v) =&gt; Map k v -&gt; Map k v -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span id="local-6989586621679043606"><span id="local-6989586621679043607"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679043601"><span id="local-6989586621679043604"><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="#local-6989586621679043607"><span class="hs-identifier hs-type">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="#local-6989586621679043606"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043607"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043606"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-29"></span><span>    </span><span id="local-6989586621679043599"><span class="annot"><span class="annottext">show :: Map k v -&gt; String
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">show</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span id="local-6989586621679043597"><span class="annot"><span class="annottext">m :: [(k, v)]
+</span><a href="#local-6989586621679043597"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-string">&quot;fromList &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[(k, v)] -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">[(k, v)]
+</span><a href="#local-6989586621679043597"><span class="hs-identifier hs-var">m</span></a></span></span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- |Empty map, that is, a map containing no bindings.</span><span>
+</span><span id="line-33"></span><span id="local-6989586621679043626"><span id="local-6989586621679043627"><span class="annot"><a href="Maps.html#empty"><span class="hs-identifier hs-type">empty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043627"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043626"><span class="hs-identifier hs-type">v</span></a></span></span></span><span>
+</span><span id="line-34"></span><span id="empty"><span class="annot"><span class="annottext">empty :: Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var hs-var">empty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(k, v)] -&gt; Map k v
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- |Get a binding from a map.</span><span>
+</span><span id="line-37"></span><span id="local-6989586621679043648"><span id="local-6989586621679043649"><span class="annot"><a href="Maps.html#get"><span class="hs-identifier hs-type">get</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Eq</span></span><span> </span><span class="annot"><a href="#local-6989586621679043649"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043649"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043648"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679043649"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679043648"><span class="hs-identifier hs-type">v</span></a></span></span></span><span>
+</span><span id="line-38"></span><span id="get"><span class="annot"><span class="annottext">get :: Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var hs-var">get</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679043596"><span class="annot"><span class="annottext">y :: k
+</span><a href="#local-6989586621679043596"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679043595"><span class="annot"><span class="annottext">v :: v
+</span><a href="#local-6989586621679043595"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679043594"><span class="annot"><span class="annottext">m :: [(k, v)]
+</span><a href="#local-6989586621679043594"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span id="local-6989586621679043593"><span class="annot"><span class="annottext">x :: k
+</span><a href="#local-6989586621679043593"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">k
+</span><a href="#local-6989586621679043593"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">k -&gt; k -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">k
+</span><a href="#local-6989586621679043596"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">v -&gt; Maybe v
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">v
+</span><a href="#local-6989586621679043595"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map k v -&gt; k -&gt; Maybe v
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(k, v)] -&gt; Map k v
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span><span> </span><span class="annot"><span class="annottext">[(k, v)]
+</span><a href="#local-6989586621679043594"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">k
+</span><a href="#local-6989586621679043593"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span id="local-6989586621679043592"><span class="annot"><span class="annottext">x :: k
+</span><a href="#local-6989586621679043592"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe v
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- |Add a binding to the given map</span><span>
+</span><span id="line-44"></span><span id="local-6989586621679043624"><span id="local-6989586621679043625"><span class="annot"><a href="Maps.html#set"><span class="hs-identifier hs-type">set</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043625"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043624"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679043625"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679043624"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043625"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043624"><span class="hs-identifier hs-type">v</span></a></span></span></span><span> </span><span>
+</span><span id="line-45"></span><span id="set"><span class="annot"><span class="annottext">set :: Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var hs-var">set</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span id="local-6989586621679043591"><span class="annot"><span class="annottext">m :: [(k, v)]
+</span><a href="#local-6989586621679043591"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679043590"><span class="annot"><span class="annottext">x :: k
+</span><a href="#local-6989586621679043590"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679043589"><span class="annot"><span class="annottext">v :: v
+</span><a href="#local-6989586621679043589"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(k, v)] -&gt; Map k v
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span><span> </span><span class="annot"><span class="annottext">([(k, v)] -&gt; Map k v) -&gt; [(k, v)] -&gt; Map k v
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">k
+</span><a href="#local-6989586621679043590"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">v
+</span><a href="#local-6989586621679043589"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(k, v) -&gt; [(k, v)] -&gt; [(k, v)]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[(k, v)]
+</span><a href="#local-6989586621679043591"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- |Return all the keys in a given map</span><span>
+</span><span id="line-48"></span><span id="local-6989586621679043622"><span id="local-6989586621679043623"><span class="annot"><a href="Maps.html#keys"><span class="hs-identifier hs-type">keys</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Eq</span></span><span> </span><span class="annot"><a href="#local-6989586621679043623"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043623"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043622"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679043623"><span class="hs-identifier hs-type">k</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-49"></span><span id="keys"><span class="annot"><span class="annottext">keys :: Map k v -&gt; [k]
+</span><a href="Maps.html#keys"><span class="hs-identifier hs-var hs-var">keys</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span id="local-6989586621679043588"><span class="annot"><span class="annottext">m :: [(k, v)]
+</span><a href="#local-6989586621679043588"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[k] -&gt; [k]
+forall a. Eq a =&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">nub</span></span><span> </span><span class="annot"><span class="annottext">([k] -&gt; [k]) -&gt; ([(k, v)] -&gt; [k]) -&gt; [(k, v)] -&gt; [k]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">((k, v) -&gt; k) -&gt; [(k, v)] -&gt; [k]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(k, v) -&gt; k
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">([(k, v)] -&gt; [k]) -&gt; [(k, v)] -&gt; [k]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[(k, v)]
+</span><a href="#local-6989586621679043588"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- |Construct a map from the given list of key-value pairs</span><span>
+</span><span id="line-52"></span><span id="local-6989586621679043585"><span id="local-6989586621679043586"><span class="annot"><a href="Maps.html#fromList"><span class="hs-identifier hs-type">fromList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679043586"><span class="hs-identifier hs-type">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679043585"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043586"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043585"><span class="hs-identifier hs-type">v</span></a></span></span></span><span>
+</span><span id="line-53"></span><span id="fromList"><span class="annot"><span class="annottext">fromList :: [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var hs-var">fromList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(k, v)] -&gt; Map k v
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#Map"><span class="hs-identifier hs-var">Map</span></a></span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- |Return a list of all key-value pairs</span><span>
+</span><span id="line-56"></span><span id="local-6989586621679043583"><span id="local-6989586621679043584"><span class="annot"><a href="Maps.html#toList"><span class="hs-identifier hs-type">toList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043584"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043583"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679043584"><span class="hs-identifier hs-type">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679043583"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span></span></span><span> </span><span>
+</span><span id="line-57"></span><span id="toList"><span class="annot"><span class="annottext">toList :: Map k v -&gt; [(k, v)]
+</span><a href="Maps.html#toList"><span class="hs-identifier hs-var hs-var">toList</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span id="local-6989586621679043582"><span class="annot"><span class="annottext">m :: [(k, v)]
+</span><a href="#local-6989586621679043582"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(k, v)]
+</span><a href="#local-6989586621679043582"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span id="allTests"><span class="annot"><span class="annottext">allTests :: IO ()
+</span><a href="Maps.html#allTests"><span class="hs-identifier hs-var hs-var">allTests</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Map String Integer -&gt; Map String Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;0&quot;</span></span><span> </span><span>
+</span><span id="line-62"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-63"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(String, Integer)] -&gt; Map String Integer
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Map String Integer -&gt; Map String Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;1&quot;</span></span><span> </span><span>
+</span><span id="line-65"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-66"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(String, Integer)] -&gt; Map String Integer
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Map String Integer -&gt; Map String Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;2&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-68"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(String, Integer)] -&gt; Map String Integer
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Map String Integer -&gt; Map String Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;3&quot;</span></span><span> </span><span>
+</span><span id="line-70"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-71"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(String, Integer)] -&gt; Map String Integer
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;4&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Maps.html#Map"><span class="hs-identifier hs-type">Map</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Integer
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-73"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;5&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Maybe Integer
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;6&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Integer
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-75"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;7&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Maybe Integer
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;7&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Maybe Integer
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;8&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Maybe Integer
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;9&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Maybe Integer
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Maybe Integer -&gt; Maybe Integer -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;10&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Maybe Integer
+forall k v. Eq k =&gt; Map k v -&gt; k -&gt; Maybe v
+</span><a href="Maps.html#get"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; String -&gt; Integer -&gt; Map String Integer
+forall k v. Map k v -&gt; k -&gt; v -&gt; Map k v
+</span><a href="Maps.html#set"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">Map String Integer
+forall k v. Map k v
+</span><a href="Maps.html#empty"><span class="hs-identifier hs-var">empty</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span> </span><span class="annot"><span class="hs-number">55</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;z&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Integer
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [String] -&gt; IO ()
+forall a. (Eq a, Show a) =&gt; String -&gt; a -&gt; a -&gt; IO ()
+</span><a href="SimpleTests.html#test"><span class="hs-identifier hs-var">test</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;keys 1&quot;</span></span><span> </span><span>
+</span><span id="line-81"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map String Integer -&gt; [String]
+forall k v. Eq k =&gt; Map k v -&gt; [k]
+</span><a href="Maps.html#keys"><span class="hs-identifier hs-var">keys</span></a></span><span> </span><span class="annot"><span class="annottext">(Map String Integer -&gt; [String]) -&gt; Map String Integer -&gt; [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span>
+</span><span id="line-82"></span><span>            </span><span class="annot"><span class="annottext">[(String, Integer)] -&gt; Map String Integer
+forall k v. [(k, v)] -&gt; Map k v
+</span><a href="Maps.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">12</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">13</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;z&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">14</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">11</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;z&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-number">42</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="hs-string">&quot;x&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;y&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-string">&quot;z&quot;</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span></pre></body></html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Result
+Description : The Result datatype
+Copyright   : (c) Ferd, 2020
+Maintainer  : f.vesely@northeastern
+
+This module provides a type of results: either we have a value or we have a
+failure with an error message. The type is a monad. Several helper functions are provided.
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Result</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- |Represents a successful result with a value or a failuer with an error </span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- message.</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">data</span><span> </span><span id="Result"><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-var">Result</span></a></span></span><span> </span><span id="local-6989586621679043110"><span class="annot"><a href="#local-6989586621679043110"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Success"><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679043110"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-16"></span><span>              </span><span class="hs-glyph">|</span><span> </span><span id="Failure"><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-17"></span><span>              </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679043056"><span id="local-6989586621679043058"><span id="local-6989586621679043060"><span class="annot"><span class="annottext">Int -&gt; Result a -&gt; ShowS
+[Result a] -&gt; ShowS
+Result a -&gt; String
+(Int -&gt; Result a -&gt; ShowS)
+-&gt; (Result a -&gt; String) -&gt; ([Result a] -&gt; ShowS) -&gt; Show (Result a)
+forall a. Show a =&gt; Int -&gt; Result a -&gt; ShowS
+forall a. Show a =&gt; [Result a] -&gt; ShowS
+forall a. Show a =&gt; Result a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Result a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [Result a] -&gt; ShowS
+show :: Result a -&gt; String
+$cshow :: forall a. Show a =&gt; Result a -&gt; String
+showsPrec :: Int -&gt; Result a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; Result a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679043047"><span id="local-6989586621679043049"><span id="local-6989586621679043051"><span id="local-6989586621679043053"><span class="annot"><span class="annottext">ReadPrec [Result a]
+ReadPrec (Result a)
+Int -&gt; ReadS (Result a)
+ReadS [Result a]
+(Int -&gt; ReadS (Result a))
+-&gt; ReadS [Result a]
+-&gt; ReadPrec (Result a)
+-&gt; ReadPrec [Result a]
+-&gt; Read (Result a)
+forall a. Read a =&gt; ReadPrec [Result a]
+forall a. Read a =&gt; ReadPrec (Result a)
+forall a. Read a =&gt; Int -&gt; ReadS (Result a)
+forall a. Read a =&gt; ReadS [Result a]
+forall a.
+(Int -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+readListPrec :: ReadPrec [Result a]
+$creadListPrec :: forall a. Read a =&gt; ReadPrec [Result a]
+readPrec :: ReadPrec (Result a)
+$creadPrec :: forall a. Read a =&gt; ReadPrec (Result a)
+readList :: ReadS [Result a]
+$creadList :: forall a. Read a =&gt; ReadS [Result a]
+readsPrec :: Int -&gt; ReadS (Result a)
+$creadsPrec :: forall a. Read a =&gt; Int -&gt; ReadS (Result a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679043042"><span id="local-6989586621679043044"><span class="annot"><span class="annottext">Result a -&gt; Result a -&gt; Bool
+(Result a -&gt; Result a -&gt; Bool)
+-&gt; (Result a -&gt; Result a -&gt; Bool) -&gt; Eq (Result a)
+forall a. Eq a =&gt; Result a -&gt; Result a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Result a -&gt; Result a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; Result a -&gt; Result a -&gt; Bool
+== :: Result a -&gt; Result a -&gt; Bool
+$c== :: forall a. Eq a =&gt; Result a -&gt; Result a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- |Result is a functor and can be mapped over</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679043038"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-comment">-- fmap :: (a -&gt; b) -&gt; Result a -&gt; Result b</span><span>
+</span><span id="line-22"></span><span>    </span><span id="local-6989586621679043036"><span class="annot"><span class="annottext">fmap :: (a -&gt; b) -&gt; Result a -&gt; Result b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679043035"><span class="annot"><span class="annottext">f :: a -&gt; b
+</span><a href="#local-6989586621679043035"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-type">Success</span></a></span><span> </span><span id="local-6989586621679043034"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679043034"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; Result b
+forall a. a -&gt; Result a
+</span><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span><span> </span><span class="annot"><span class="annottext">(b -&gt; Result b) -&gt; b -&gt; Result b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679043035"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679043034"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-type">Failure</span></a></span><span> </span><span id="local-6989586621679043033"><span class="annot"><span class="annottext">s :: String
+</span><a href="#local-6989586621679043033"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result b
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679043033"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- |Result is also an applicative functor</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679043024"><span id="local-6989586621679043026"><span id="local-6989586621679043028"><span class="annot"><span class="hs-identifier hs-type">Applicative</span></span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-comment">-- pure :: a -&gt; Result a</span><span>
+</span><span id="line-28"></span><span>    </span><span id="local-6989586621679043022"><span class="annot"><span class="annottext">pure :: a -&gt; Result a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">pure</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Result a
+forall a. a -&gt; Result a
+</span><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-comment">-- (&lt;*&gt;) :: Result (a -&gt; b) -&gt; Result a -&gt; Result b</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-type">Success</span></a></span><span> </span><span id="local-6989586621679043021"><span class="annot"><span class="annottext">f :: a -&gt; b
+</span><a href="#local-6989586621679043021"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679043020"><span class="annot"><span class="annottext">&lt;*&gt; :: Result (a -&gt; b) -&gt; Result a -&gt; Result b
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;*&gt;</span></span></span><span> </span><span id="local-6989586621679043019"><span class="annot"><span class="annottext">ra :: Result a
+</span><a href="#local-6989586621679043019"><span class="hs-identifier hs-var">ra</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679043021"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; Result a -&gt; Result b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Result a
+</span><a href="#local-6989586621679043019"><span class="hs-identifier hs-var">ra</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-type">Failure</span></a></span><span> </span><span id="local-6989586621679043017"><span class="annot"><span class="annottext">s :: String
+</span><a href="#local-6989586621679043017"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="annot"><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-identifier">_</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result b
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679043017"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- |Result is a monad.</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679043013"><span class="annot"><span class="hs-identifier hs-type">Monad</span></span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-comment">-- return :: a -&gt; Result a</span><span>
+</span><span id="line-37"></span><span>    </span><span id="local-6989586621679043010"><span class="annot"><span class="annottext">return :: a -&gt; Result a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">return</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Result a
+forall a. a -&gt; Result a
+</span><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-comment">-- (&gt;&gt;=) :: Result a -&gt; (a -&gt; Result b) -&gt; Result b</span><span>
+</span><span id="line-40"></span><span>    </span><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-type">Success</span></a></span><span> </span><span id="local-6989586621679043009"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679043009"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679043008"><span class="annot"><span class="annottext">&gt;&gt;= :: Result a -&gt; (a -&gt; Result b) -&gt; Result b
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&gt;&gt;=</span></span></span><span> </span><span id="local-6989586621679043007"><span class="annot"><span class="annottext">f :: a -&gt; Result b
+</span><a href="#local-6989586621679043007"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Result b
+</span><a href="#local-6989586621679043007"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679043009"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-type">Failure</span></a></span><span> </span><span id="local-6989586621679043006"><span class="annot"><span class="annottext">s :: String
+</span><a href="#local-6989586621679043006"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="annot"><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-identifier">_</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result b
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679043006"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- |Result can represent failure in a monadic context.</span><span>
+</span><span id="line-44"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadFail</span></span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-45"></span><span>    </span><span class="hs-comment">-- fail :: String -&gt; Result a</span><span>
+</span><span id="line-46"></span><span>    </span><span id="local-6989586621679043002"><span class="annot"><span class="annottext">fail :: String -&gt; Result a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fail</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result a
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- |Convert from a Maybe to a Result, with a default error message for Nothing</span><span>
+</span><span id="line-49"></span><span id="local-6989586621679043001"><span class="annot"><a href="Result.html#fromMaybe"><span class="hs-identifier hs-type">fromMaybe</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679043001"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679043001"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-50"></span><span id="fromMaybe"><span class="annot"><span class="annottext">fromMaybe :: Maybe a -&gt; Result a
+</span><a href="Result.html#fromMaybe"><span class="hs-identifier hs-var hs-var">fromMaybe</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679042999"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679042999"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Result a
+forall a. a -&gt; Result a
+</span><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679042999"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Result.html#fromMaybe"><span class="hs-identifier hs-var">fromMaybe</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result a
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;Got Nothing&quot;</span></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- |Convert from a Maybe to a Result, using the given error message for Nothing</span><span>
+</span><span id="line-54"></span><span id="local-6989586621679042998"><span class="annot"><a href="Result.html#fromMaybe%27"><span class="hs-identifier hs-type">fromMaybe'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679042998"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679042998"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-55"></span><span id="fromMaybe%27"><span class="annot"><span class="annottext">fromMaybe' :: String -&gt; Maybe a -&gt; Result a
+</span><a href="Result.html#fromMaybe%27"><span class="hs-identifier hs-var hs-var">fromMaybe'</span></a></span></span><span> </span><span class="hs-identifier">_</span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679042996"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679042996"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Result a
+forall a. a -&gt; Result a
+</span><a href="Result.html#Success"><span class="hs-identifier hs-var">Success</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679042996"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Result.html#fromMaybe%27"><span class="hs-identifier hs-var">fromMaybe'</span></a></span><span> </span><span id="local-6989586621679042995"><span class="annot"><span class="annottext">msg :: String
+</span><a href="#local-6989586621679042995"><span class="hs-identifier hs-var">msg</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Result a
+forall a. String -&gt; Result a
+</span><a href="Result.html#Failure"><span class="hs-identifier hs-var">Failure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042995"><span class="hs-identifier hs-var">msg</span></a></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- |Convert a Result to a Maybe</span><span>
+</span><span id="line-59"></span><span id="local-6989586621679042994"><span class="annot"><a href="Result.html#toMaybe"><span class="hs-identifier hs-type">toMaybe</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679042994"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679042994"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-60"></span><span id="toMaybe"><span class="annot"><span class="annottext">toMaybe :: Result a -&gt; Maybe a
+</span><a href="Result.html#toMaybe"><span class="hs-identifier hs-var hs-var">toMaybe</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-type">Success</span></a></span><span> </span><span id="local-6989586621679042992"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679042992"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679042992"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Result.html#toMaybe"><span class="hs-identifier hs-var">toMaybe</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-type">Failure</span></a></span><span> </span><span class="hs-identifier">_</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- |Convert a Result to IO</span><span>
+</span><span id="line-64"></span><span id="local-6989586621679042991"><span class="annot"><a href="Result.html#toIO"><span class="hs-identifier hs-type">toIO</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679042991"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679042991"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-65"></span><span id="toIO"><span class="annot"><span class="annottext">toIO :: Result a -&gt; IO a
+</span><a href="Result.html#toIO"><span class="hs-identifier hs-var hs-var">toIO</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Success"><span class="hs-identifier hs-type">Success</span></a></span><span> </span><span id="local-6989586621679042989"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679042989"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679042989"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Result.html#toIO"><span class="hs-identifier hs-var">toIO</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Result.html#Failure"><span class="hs-identifier hs-type">Failure</span></a></span><span> </span><span id="local-6989586621679042988"><span class="annot"><span class="annottext">s :: String
+</span><a href="#local-6989586621679042988"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042988"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span></pre></body></html>
