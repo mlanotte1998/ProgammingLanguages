@@ -1,10 +1,12 @@
 {- |
 Module      :  Assignment09
 Description :  Assignment 9 submission for CS 4400.
-Copyright   :  (c) Ferd, 2020
-
-Maintainer  :  f.vesely@northeastern.edu
-
+Copyright   : (c) Ferd, 2020
+                  Michael Lanotte, 2020
+                  Rachel Johanek, 2020
+Maintainer  : f.vesely@northeastern
+              lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
 -}
 
 import qualified TypeCheck
@@ -66,4 +68,5 @@ allTests = do
     Eval.test_runSExpression
     Eval.test_runProgram
     TypeCheck.test_typeOf 
+    TypeCheck.test_typeOfProgramSExpr
 

@@ -315,7 +315,7 @@ test_eval = do
      (R.Success (Integer 42))
 
     test "eval Integer: (let (x (+1 2)) (* 4 x))"
-       (eval empty builtins ( Let "x" pp [Var "+", Val (Integer 1), Val (Integer 2)]) (App [Var "*", Val (Integer 4), Var "x"])))
+      (eval empty builtins ( Let "x" (App [Var "+", Val (Integer 1), Val (Integer 2)]) (App [Var "*", Val (Integer 4), Var "x"])))
        (R.Success (Integer 12))
 
     test "eval Integer not assigned Var Test 1" (eval empty builtins (Var "x")) 

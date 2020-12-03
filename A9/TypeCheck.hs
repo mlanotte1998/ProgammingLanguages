@@ -3,7 +3,11 @@
 Module      : TypeCheck
 Description : A type-checker for protoScheme with type inference and let-polymorphism.
 Copyright   : (c) Ferd, 2020
+                  Michael Lanotte, 2020
+                  Rachel Johanek, 2020
 Maintainer  : f.vesely@northeastern
+              lanotte.m@northeastern.edu
+              johanek.r@northeastern.edu
 
 An implementation of the protoScheme type-checker.
 
@@ -15,6 +19,10 @@ import Types
 import Maps
 import Syntax 
 import Result
+
+import Parser
+
+import System.IO.Unsafe (unsafePerformIO)
 
 import qualified SExpression as S
 
@@ -142,17 +150,51 @@ typeOf tenv (Cond ((e1, e2) : xs) e3) = do
                     _ -> fail "Cond clause was not of type TyBoolean."        
 typeOf _ _ = fail "Given incompatible expr."
 
+
+-- ====================================================================================================
+
 -- |Compute the type of the given program, relative to the given type environment
 typeOfProgram :: TyEnv -> Program -> Result Type
-typeOfProgram _ _ = undefined -- TODO: complete
+typeOfProgram tenv (Program globalDefs e) = 
+    case ensureGlobalDefTypes tenv globalDefs of 
+        Success tenv'' -> typeOf tenv'' e
+        Failure f -> fail f
 
--- |Compute the 
+-- Adds all of the program define and defun types to the type environment
+typeOfProgramTyEnv :: TyEnv -> [S.Expr] -> Result TyEnv 
+typeOfProgramTyEnv tenv [] = return tenv
+typeOfProgramTyEnv tenv (S.List[S.Symbol name, S.Symbol ":", typeSignature] : _ :xs) = 
+    case Types.fromSExpression typeSignature of 
+        Success ty -> typeOfProgramTyEnv (set tenv name ty) xs 
+        Failure f -> fail f
+
+-- Checks the given program define and defun types with their actual computed types
+ensureGlobalDefTypes :: TyEnv -> [GlobalDef] -> Result TyEnv
+ensureGlobalDefTypes tenv [] = return tenv 
+ensureGlobalDefTypes tenv ((Define (Sig name _) e):xs) = do 
+    case typeOf tenv e of 
+        Success ty -> do 
+            -- will always be defined but in here as precaution
+            ty' <- fromMaybe' ("Variable " ++ name ++ " is not defined") $ get tenv name
+            if ty == ty' 
+                then ensureGlobalDefTypes tenv xs 
+                else fail $ "Function or variable " ++ name ++ " actual type is not the same as the expected type."
+        Failure f -> fail $ "Possible function or variable " ++ name ++ " with incorrect type: " ++ f        
+
+
+-- |Compute the type of program given a list of SExpr - program form, and return a SExpr of the type. 
 typeOfProgramSExpr :: [S.Expr] -> Result S.Expr
 typeOfProgramSExpr sexprs = do
-    program <- programFromSExpression (S.List [S.Symbol "Program", S.List sexprs])
-    typ <- typeOfProgram tyBase program
-    return $ Types.toSExpression typ
-
+    -- Get the program
+    (Program globals e) <- programFromSExpression (S.List [S.Symbol "Program", S.List sexprs])
+    -- Build up the TyEnv with the parsed types from the s expr.
+    case typeOfProgramTyEnv tyBase (init sexprs) of 
+        Success tenv' -> do 
+            -- pass on the updated TyEnv to then compute the program type. 
+            case typeOfProgram tenv' (Program globals e) of 
+                Success ty -> return $ Types.toSExpression ty
+                Failure f -> fail f
+        Failure f -> fail f                      
 
 
 -- =====================================================================================================================
@@ -255,17 +297,29 @@ test_typeOf = do
          (Just (App [Var "not", Val (Boolean False)]))))
        (fail "Incompatible return types for Cond.")
 
-    test "eval Cond with else that is the same return type" (typeOf tyBase (Cond [(Val (Boolean False), 
+    test "typeOf Cond with else that is the same return type" (typeOf tyBase (Cond [(Val (Boolean False), 
      App [Var "+", Val (Integer 5), Val (Integer 2)]), 
         (Val (Boolean False), Val (Integer 10))]
          (Just (App [Var "-", Val (Integer 5), Val (Integer 2)]))))
        (Success $ TyBase TyInteger)
 
-    test "eval Cond with else that has expressions in list of different type" (typeOf tyBase (Cond [(Val (Boolean False), 
+    test "typeOf Cond with else that has expressions in list of different type" (typeOf tyBase (Cond [(Val (Boolean False), 
      App [Var "+", Val (Integer 5), Val (Integer 2)]), 
         (Val (Boolean False), Val (Float 10.5))]
          (Just (App [Var "-", Val (Integer 5), Val (Integer 2)]))))
        (fail "Cond doesnt have the same return types.")   
+
+    -- Predicates
+
+    test "typeOf test Boolean?" (typeOf tyBase (Boolean_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
+
+    test "typeOf test Real?" (typeOf tyBase (Real_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
+
+    test "typeOf test Integer?" (typeOf tyBase (Integer_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
+
+    test "typeOf test Number?" (typeOf tyBase (Number_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
+
+    test "typeOf test Pair?" (typeOf tyBase (Pair_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")   
        
 
     -- Add Tests
@@ -420,12 +474,88 @@ test_typeOf = do
       [Lambda [Sig "x" (TyBase TyInteger), Sig "y" (TyBase TyInteger)] (App [Var "+", Var "x", Var "y"]) , Val (Integer 5), Val (Boolean False)])) 
       (fail "Argument types do not match.")  
 
-     --test Predicates
 
-    test "typeOf test Boolean?" (typeOf tyBase (Boolean_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
-    test "typeOf test Real?" (typeOf tyBase (Real_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
-    test "typeOf test Integer?" (typeOf tyBase (Integer_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
-    test "typeOf test Number?" (typeOf tyBase (Number_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
-    test "typeOf test Pair?" (typeOf tyBase (Pair_Pred (Val (Boolean True)))) (fail "Given incompatible expr.")
+-- ==============================================================================================================
+
+-- Helper function for easily running example files as tests for the typeOfProgramSExpr function
+typeOfProgramSExprHelper :: (Result [S.Expr]) -> [S.Expr]
+typeOfProgramSExprHelper (Success x)= x 
+-- this should never happen
+typeOfProgramSExprHelper (Failure f) = []
+
+
+{-
+(x : Boolean)
+(define x 12)
+(f : (-> Boolean Integer))
+(defun f (x) (+ x 1))
+(g : (-> Integer Boolean))
+(defun g (x) (+ x 1))
+-}
+
+sexpr_ex_incorrect_function_def_1 = 
+     [S.List [S.Symbol "x", S.Symbol ":", S.Symbol "Boolean"], 
+            S.List[S.Symbol "define", S.Symbol "x", S.Integer 12],
+            S.Symbol "x"]
+
+sexpr_ex_incorrect_function_def_2 = 
+     [S.List [S.Symbol "f", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "Boolean", S.Symbol "Integer"]], 
+            S.List[S.Symbol "defun", S.Symbol "f", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]],
+            S.Integer 10]
+
+sexpr_ex_incorrect_function_def_3 = 
+     [S.List [S.Symbol "g", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "Integer", S.Symbol "Boolean"]], 
+            S.List[S.Symbol "defun", S.Symbol "f", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]],
+            S.Integer 10]        
+
+sexpr_ex_incorrect_signature = 
+     [S.List [S.Symbol "h", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "Integer", S.Symbol "real"]], 
+            S.List[S.Symbol "defun", S.Symbol "h", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]],
+            S.Integer 10]    
+
+sexpr_ex_function_body_undefined_variable = 
+     [S.List [S.Symbol "l", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "Integer", S.Symbol "real"]], 
+            S.List[S.Symbol "defun", S.Symbol "l", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "y", S.Integer 1]],
+            S.Integer 10]                    
+
+
+
+--tests runProgram
+test_typeOfProgramSExpr = do 
+     test "typeOfProgramSExpr 1" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example1.pss")))) 
+      (Success $ S.List [S.Symbol "Pair-of", S.Symbol "Boolean", S.Symbol "Boolean"])
+
+     test "typeOfProgramSExpr 2" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example2.pss")))) 
+      (Success $ S.Symbol "Integer")
+
+     test "typeOfProgramSExpr 3" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example3.pss")))) 
+      (Success $ S.Symbol "Integer")
+
+     test "typeOfProgramSExpr 4" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example4.pss")))) 
+      (Success $ S.List [S.Symbol "Pair-of", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Boolean"], 
+                                             S.List [S.Symbol "->", S.Symbol "Boolean", S.Symbol "Integer"]])
+
+     test "typeOfProgramSExpr 5" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example5.pss")))) 
+      (Success (S.List [S.Symbol "Pair-of", S.Symbol "Integer", S.Symbol "Integer"]))
+
+     test "typeOfProgramSExpr 6" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example6.pss")))) 
+      (Success (S.List [S.Symbol "Pair-of", S.Symbol "Integer", S.Symbol "Integer"]))                                                                             
+                 
+     test "typeOfProgramSExpr function defs dont match 1" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_1) 
+      (fail "Function or variable x actual type is not the same as the expected type.")
+
+     test "typeOfProgramSExpr function defs dont match 2" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_2) 
+      (fail "Possible function or variable f with incorrect type: Argument types do not match.")
+
+     test "typeOfProgramSExpr function defs dont match 3" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_3) 
+      (fail "Function or variable g actual type is not the same as the expected type.")  
+
+     test "typeOfProgramSExpr function with signature that cant be parsed" (typeOfProgramSExpr sexpr_ex_incorrect_signature) 
+      (fail "Given s-expression cannot be parsed as a type")   
+
+     test "typeOfProgramSExpr function body has undefined variable" (typeOfProgramSExpr sexpr_ex_function_body_undefined_variable) 
+      (fail "Given s-expression cannot be parsed as a type")   
+  
+
 
  
