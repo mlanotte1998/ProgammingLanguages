@@ -53,16 +53,17 @@ main = do
 
 allTests :: IO ()
 allTests = do
-    -- Syntax.test_fromSExpression
-    -- Syntax.test_fromSExpressionTupleListHelper
-    -- Syntax.test_programFromSExpression
-    -- Syntax.test_valueToSExpression
-    -- Syntax.test_toSExpression
-    -- Syntax.test_toSExpressionTupleListHelper
-    -- Eval.test_checkFloatEquality
-    -- Eval.test_evalProgram
-    -- Eval.test_eval
-    -- Eval.test_evalTupleListHelper
-    -- Eval.test_runSExpression
+    Syntax.test_fromSExpression
+    Syntax.test_fromSExpressionTupleListHelper
+    Syntax.test_programFromSExpression
+    Syntax.test_valueToSExpression
+    Syntax.test_toSExpression
+    Syntax.test_toSExpressionTupleListHelper
+    Eval.test_checkFloatEquality
+    Eval.test_evalProgram
+    Eval.test_eval
+    Eval.test_evalTupleListHelper
+    Eval.test_runSExpression
     Eval.test_runProgram
+    TypeCheck.test_typeOf 
 

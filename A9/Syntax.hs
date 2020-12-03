@@ -219,79 +219,97 @@ builtins = fromList
 
 --Creates a Program representing the given SExpression
 --Parses SExpression and converts it to the data type Program
-programFromSExpression :: S.Expr -> Program 
-programFromSExpression (S.List [S.Symbol "Program", S.List x]) = 
-  Program (listOfGlobalDefsToProgram (init x)) (fromSExpression (last x))
-     
+programFromSExpression :: S.Expr -> R.Result Program 
+programFromSExpression (S.List [S.Symbol "Program", S.List x]) = do
+  globalDefList <- listOfGlobalDefsToProgram (init x)
+  R.Success $ Program globalDefList (fromSExpression (last x))
+      
 
 -- Helper function for handling a listof S.Exprs that should be global defs. 
-listOfGlobalDefsToProgram :: [S.Expr] -> [GlobalDef]
-listOfGlobalDefsToProgram [] = []
-listOfGlobalDefsToProgram (S.List[S.Symbol name, S.Symbol ":", typeSignature] : (S.List[S.Symbol "define", _, e]):xs) = 
+listOfGlobalDefsToProgram :: [S.Expr] -> R.Result [GlobalDef]
+listOfGlobalDefsToProgram [] = R.Success []
+listOfGlobalDefsToProgram (S.List[S.Symbol name, S.Symbol ":", typeSignature] : (S.List[S.Symbol "define", _, e]):xs) = do 
+    restOfList <- listOfGlobalDefsToProgram xs
     case T.fromSExpression typeSignature of 
-      R.Success resultingType -> Define (Sig name resultingType) (fromSExpression e) : listOfGlobalDefsToProgram xs
-listOfGlobalDefsToProgram (S.List[S.Symbol name, S.Symbol ":", typeSignature] : S.List[S.Symbol "defun", S.List args, e] :xs) = 
+      R.Success resultingType -> R.Success $ Define (Sig name resultingType) (fromSExpression e) : restOfList
+      R.Failure f -> R.Failure f
+listOfGlobalDefsToProgram (S.List[S.Symbol name, S.Symbol ":", typeSignature] : S.List[S.Symbol "defun", _, S.List args, e] :xs) = do
     case T.fromSExpression typeSignature of 
-      R.Success resultingType ->  Define (Sig name resultingType) (Lambda (listFromSExpressionSignatureList args) (fromSExpression e)) : listOfGlobalDefsToProgram xs
+      R.Success (T.TyArrow arrowList) ->  do 
+        restOfList <- listOfGlobalDefsToProgram xs 
+        computedSignatureList <- listOfArgsToSigs (init arrowList) args
+        R.Success $ Define (Sig name (T.TyArrow arrowList)) (Lambda computedSignatureList (fromSExpression e)) : restOfList
+      R.Failure f -> R.Failure f
+      
 
-   
+-- Helper function for handling making a defun's Lambda signature list based on the given signature in the program. 
+-- Uses types from TyArrow of function definition and variables to make the list of signatures. 
+listOfArgsToSigs :: [T.Type] -> [S.Expr] -> R.Result [Signature] 
+listOfArgsToSigs [] [] = R.Success []
+listOfArgsToSigs [] _ = fail "Not enough arguments in function."
+listOfArgsToSigs _ [] = fail "Too many arguments in function."
+listOfArgsToSigs (x:xs) ((S.Symbol y):ys) = do 
+  restOfList <- listOfArgsToSigs xs ys
+  R.Success (Sig y x : restOfList)
+  
+
+
 -- Examples of S-Expressions representing a variety of Programs, including simple and nested Programs
 -- and programs including Defun and Define
-sexpr_empty = S.List[S.Symbol "Program", S.List[(S.Integer 5)]]
+sexpr_ex1 = S.List[S.Symbol "Program", S.List[(S.Integer 5)]]
 
-sexpr_ex1 = S.List [S.Symbol "Program", S.List[S.List [S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]], 
- S.List[S.Symbol "defun", S.List [S.Symbol "x", 
+sexpr_ex2 = S.List [S.Symbol "Program", S.List[S.List [S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]], 
+ S.List[S.Symbol "defun", S.Symbol "incr", S.List [S.Symbol "x"], 
   S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], S.List[S.Symbol "incr", 
-    S.List [S.Symbol "incr", S.List [S.Symbol "incr", S.Integer 1]]]]]]
+    S.List [S.Symbol "incr", S.List [S.Symbol "incr", S.Integer 1]]]]]
 
-sexpr_ex1B = S.List[S.Symbol "Program", S.List[S.List[S.Symbol "defun", S.List[S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]],
- S.List [S.List [S.Symbol "x", S.Symbol ":", S.Symbol "Integer"]], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
-   S.List [S.Symbol "defun", S.List[S.Symbol "Plus", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer", S.Symbol "Integer"]], S.List [S.List[S.Symbol "x", S.Symbol ":", S.Symbol "Integer"], S.List[S.Symbol "y", S.Symbol ":", S.Symbol "Integer"]], 
-    S.List [S.Symbol "+", S.Symbol "x", S.Symbol "y"]], S.List[S.Symbol "incr", 
-    S.List [S.Symbol "incr", S.List [ S.Symbol "Plus", S.Integer 1, S.Integer 3]]]]]  
+sexpr_ex3 = S.List[S.Symbol "Program", S.List[S.List[S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]],
+ S.List [S.Symbol "defun", S.Symbol "incr", S.List [S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
+   S.List[S.Symbol "Plus", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer", S.Symbol "Integer"]], 
+   S.List [S.Symbol "defun", S.Symbol "Plus", S.List[S.Symbol "x", S.Symbol "y"], 
+    S.List [S.Symbol "+", S.Symbol "x", S.Symbol "y"]], 
+    S.List[S.Symbol "incr", S.List [S.Symbol "incr", S.List [ S.Symbol "Plus", S.Integer 1, S.Integer 3]]]]]
 
-sexpr_ex2 = S.List[S.Symbol "Program", S.List [S.Symbol "f", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]], 
- S.List[S.List[S.Symbol "defun", S.Symbol "f", S.List[S.List[S.Symbol "x", S.Symbol ":", S.Symbol "Integer"]], 
-  S.List[S.Symbol "+", S.Symbol "x", S.Symbol "y"]], S.List[S.Symbol "let", S.List [S.Symbol "y", S.Integer 10],
-  S.List[S.Symbol "f", S.Integer 10]]]]
+sexpr_ex4 = S.List[S.Symbol "Program", S.List [S.List [S.Symbol "f", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]], 
+  S.List[S.Symbol "defun", S.Symbol "f",S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Symbol "y"]], 
+  S.List[S.Symbol "let", S.List [S.Symbol "y", S.Integer 10],S.List[S.Symbol "f", S.Integer 10]]]]
 
-sexpr_ex3 = S.List[S.Symbol "Program", S.List[S.List [S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]],
- S.List[S.Symbol "defun", S.Symbol "incr", S.List[S.List [S.Symbol "x", S.Symbol ":", S.Symbol "Integer"]],
-  S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], S.List[S.Symbol "let", S.List [S.Symbol "z", S.Integer 20],
-  S.List[S.Symbol "incr", S.Symbol "z"]]]]
+sexpr_ex5 = S.List[S.Symbol "Program", S.List[S.List [S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]],
+ S.List[S.Symbol "defun", S.Symbol "incr", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
+  S.List[S.Symbol "let", S.List [S.Symbol "z", S.Integer 20], S.List[S.Symbol "incr", S.Symbol "z"]]]]
 
-sexpr_ex4 = S.List[S.Symbol "Program", S.List [S.Symbol "f", S.Symbol ":", S.Symbol "Integer"], S.List [S.List[S.Symbol "define", S.Symbol "f", S.Integer 10], 
+sexpr_ex6 = S.List[S.Symbol "Program", S.List[ S.List [S.Symbol "f", S.Symbol ":", S.Symbol "Integer"], S.List[S.Symbol "define", S.Symbol "f", S.Integer 10], 
   S.List[S.Symbol "-", S.Symbol "f", S.Integer 1]]]
 
-sexpr_ex6 = S.List[S.Symbol "Program", S.List [S.List[S.Symbol "define", S.List[ S.Symbol "f", S.Symbol ":", S.Symbol "Integer"], S.Integer 10],
-                                      S.List[S.Symbol "defun", S.Symbol "incr", S.List[S.List[S.Symbol "x", S.Symbol ":", S.Symbol "Integer"]],
-                                            S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
+sexpr_ex7 = S.List[S.Symbol "Program", S.List [S.List [S.Symbol "f", S.Symbol ":", S.Symbol "Integer"], S.List[S.Symbol "define", S.Symbol "f", S.Integer 10],
+  S.List[S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]],
+  S.List[S.Symbol "defun", S.Symbol "incr", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]], 
    S.List[S.Symbol "incr", S.Symbol "f"]]]
 
 --Examples of the same Programs represented above but as their original Program data type
-ex_program_mt = Program [] (Val (Integer 5)) 
+ex_program_1 = R.Success $Program [] (Val (Integer 5)) 
    
-ex_program_1 = Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
+ex_program_2 = R.Success $ Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
  (Lambda [Sig "x" (T.TyBase T.TyInteger)] (App [Var "+", Var "x", Val (Integer 1)]))] 
                  (App [Var "incr" , App [Var "incr", App [Var "incr", Val (Integer 1)]]])
      
-ex_program_1B = Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
+ex_program_3 = R.Success $ Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
  (Lambda [Sig "x" (T.TyBase T.TyInteger)] (App [Var "+", Var "x", Val (Integer 1)])),
-                         Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
+                         Define (Sig "Plus" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
                           (Lambda [Sig "x" (T.TyBase T.TyInteger), Sig "y" (T.TyBase T.TyInteger)] (App [Var "+", Var "x", Var "y"]))] 
                  (App [Var "incr", App [ Var "incr" , App  [ Var "Plus" , Val (Integer 1), Val (Integer 3)]]])
  
-ex_program_2 = Program [Define (Sig "f" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger, T.TyBase T.TyInteger]))
+ex_program_4 = R.Success $ Program [Define (Sig "f" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger]))
   (Lambda [Sig "x" (T.TyBase T.TyInteger)] (App [Var "+", Var "x", Var "y"]))]
                  (Let "y" (Val (Integer 10)) (App [Var "f", Val (Integer 10)]))
 
-ex_program_3 = Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
+ex_program_5 = R.Success $ Program [Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
  (Lambda [Sig "x" (T.TyBase T.TyInteger)] (App [Var "+", Var "x", Val (Integer 1)]))] 
                  (Let "z" (Val (Integer 20)) (App [Var "incr", Var "z"]))
 
-ex_program_4 = Program [Define (Sig "f" (T.TyBase T.TyInteger)) (Val (Integer 10))] (App [Var "-", Var "f", Val (Integer 1)])
+ex_program_6 = R.Success $ Program [Define (Sig "f" (T.TyBase T.TyInteger)) (Val (Integer 10))] (App [Var "-", Var "f", Val (Integer 1)])
  
-ex_program_6 = Program [Define (Sig "f" (T.TyBase T.TyInteger)) (Val (Integer 10)),
+ex_program_7 = R.Success $ Program [Define (Sig "f" (T.TyBase T.TyInteger)) (Val (Integer 10)),
                         Define (Sig "incr" (T.TyArrow [T.TyBase T.TyInteger, T.TyBase T.TyInteger])) 
                         (Lambda [Sig "x" (T.TyBase T.TyInteger)] (App [Var "+",Var "x",Val (Integer 1)]))] 
                     (App [Var "incr",Var "f"])
@@ -300,19 +318,19 @@ ex_program_6 = Program [Define (Sig "f" (T.TyBase T.TyInteger)) (Val (Integer 10
 
 --tests of programFromSExpression Defun
 test_programFromSExpression = do
-    test "programFromSExpression ex_empty test 1" (programFromSExpression sexpr_empty) ex_program_mt
+    test "programFromSExpression test 1" (programFromSExpression sexpr_ex1) ex_program_1
 
-    test "programFromSExpression ex1 test 2" (programFromSExpression sexpr_ex1) ex_program_1
+    test "programFromSExpression test 2" (programFromSExpression sexpr_ex2) ex_program_2
 
-    test "programFromSExpression ex1B test 3" (programFromSExpression sexpr_ex1B) ex_program_1B
+    test "programFromSExpression test 3" (programFromSExpression sexpr_ex3) ex_program_3
 
-    test "programFromSExpression ex2 test 4" (programFromSExpression sexpr_ex2) ex_program_2
+    test "programFromSExpression test 4" (programFromSExpression sexpr_ex4) ex_program_4
 
-    test "programFromSExpression ex3 test 5" (programFromSExpression sexpr_ex3) ex_program_3
+    test "programFromSExpression test 5" (programFromSExpression sexpr_ex5) ex_program_5
 
-    test "programFromSExpression ex4 test 6" (programFromSExpression sexpr_ex4) ex_program_4
+    test "programFromSExpression test 6" (programFromSExpression sexpr_ex6) ex_program_6
 
-    test "programFromSExpression ex6 test 7" (programFromSExpression sexpr_ex6) ex_program_6
+    test "programFromSExpression test 7" (programFromSExpression sexpr_ex7) ex_program_7
 
 --  =========================================================================================================
 

@@ -79,15 +79,12 @@ evalProgram (Program globalDefs e) = do
         R.Success globals' -> eval globals' empty e
         R.Failure f -> fail f
   where 
-    globals = collectDefs (reverse globalDefs)
-    collectDefs :: [GlobalDef] -> R.Result Env
-    collectDefs [] = return builtins
-    collectDefs (Define (Sig name _) e : globalDefs) = 
-        case eval builtins empty e of 
-            R.Success e' ->  do 
-                case collectDefs globalDefs of 
-                    R.Success defs -> return (set defs name e')
-                    R.Failure f -> fail f
+    globals = collectDefs globalDefs builtins
+    collectDefs :: [GlobalDef] -> Env -> R.Result Env
+    collectDefs [] env = return env
+    collectDefs (Define (Sig name _) e : globalDefs) env = 
+        case eval env empty e of 
+            R.Success e' -> collectDefs globalDefs (set env name e')
             R.Failure f -> fail f 
 
 --tests of the evalProgram function
@@ -318,7 +315,7 @@ test_eval = do
      (R.Success (Integer 42))
 
     test "eval Integer: (let (x (+1 2)) (* 4 x))"
-       (eval empty builtins ( Let "x" (App [Var "+", Val (Integer 1), Val (Integer 2)]) (App [Var "*", Val (Integer 4), Var "x"])))
+       (eval empty builtins ( Let "x" pp [Var "+", Val (Integer 1), Val (Integer 2)]) (App [Var "*", Val (Integer 4), Var "x"])))
        (R.Success (Integer 12))
 
     test "eval Integer not assigned Var Test 1" (eval empty builtins (Var "x")) 
@@ -1138,8 +1135,9 @@ test_eval = do
 runSExpression :: S.Expr -> R.Result S.Expr
 runSExpression se =
     case se of 
-      (S.List[S.Symbol "Program", S.List defs]) -> do
-          v <- evalProgram (programFromSExpression se) 
+      (S.List[S.Symbol "Program", S.List _]) -> do
+          program <- programFromSExpression se
+          v <- evalProgram program
           return (valueToSExpression v)
       _ -> do 
           v <- eval empty builtins (fromSExpression se) 
@@ -1588,20 +1586,24 @@ test_runSExpression = do
 
     -- Program tests 
 
-    test "Program runSExpression test 1 one defun " (runSExpression sexpr_ex1) (R.Success $ S.Integer 4) 
+    test "Program runSExpression test 1 one defun " (runSExpression sexpr_ex2) (R.Success $ S.Integer 4) 
 
-    test "Program runSExpression test 2 two defuns" (runSExpression sexpr_ex1B) (R.Success $ S.Integer 6) 
+    test "Program runSExpression test 2 two defuns" (runSExpression sexpr_ex3) (R.Success $ S.Integer 6) 
 
-    test "Program runSExpression test 3 one defun with Let " (runSExpression sexpr_ex3) (R.Success $ S.Integer 21) 
+    test "Program runSExpression test 3 one defun with Let " (runSExpression sexpr_ex5) (R.Success $ S.Integer 21) 
 
-    test "Program runSExpression test 4 one define" (runSExpression sexpr_ex4) (R.Success $ S.Integer 9) 
+    test "Program runSExpression test 4 one defun with bad Let/variable function" (runSExpression sexpr_ex4) (R.Failure "Variable y not defined.") 
+
+    test "Program runSExpression test 5 one define" (runSExpression sexpr_ex6) (R.Success $ S.Integer 9) 
 
 
 -- =====================================================================
 
 -- Function that takes in a list of SExprs in the form of a program and evaluates it. 
 runProgram :: [S.Expr] -> R.Result S.Expr 
-runProgram x = case (evalProgram (programFromSExpression (S.List [S.Symbol "Program", S.List x]))) of 
+runProgram x = do 
+  program <- programFromSExpression (S.List [S.Symbol "Program", S.List x])
+  case evalProgram program of 
                      R.Success s -> return (valueToSExpression s)
                      R.Failure f -> fail f  
 
@@ -1612,9 +1614,12 @@ runProgramTestHelper (R.Failure f) = []
 
 --tests runProgram
 test_runProgram = do 
-     test "runProgram 1" (runProgramTestHelper (unsafePerformIO (P.fromFile "example1.pss"))) [(S.Dotted (S.Boolean False) (S.Boolean True))]
-     test "runProgram 2" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example2.pss")))) (R.Success (S.Dotted (S.Integer 22) (S.Real (-5.0))))   
+     test "runProgram 1" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example1.pss")))) (R.Success (S.Dotted (S.Boolean False) (S.Boolean True)))
+     test "runProgram 2" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example2.pss")))) (R.Success (S.Integer 4294967296))   
      test "runProgram 3" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example3.pss")))) (R.Success (S.Integer 55)) 
-     test "runProgram 4" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example4.pss")))) (R.Success (S.Integer 11))               
-     test "runProgram 5" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example5.pss")))) (R.Success (S.Dotted (S.Integer (-24)) (S.Integer 24)))   
+     test "runProgram 4" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example4.pss")))) 
+      -- valueToSExpression just returns Lambda with the variable signatures which is why the result is as is.  
+      (R.Success (S.Dotted (S.List [S.Symbol "Lambda", S.List [S.Symbol "x",S.Symbol ":", S.Symbol "Integer"]])
+       (S.List [S.Symbol "Lambda", S.List [S.Symbol "x", S.Symbol ":", S.Symbol "Boolean"]])))              
+     test "runProgram 5" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example5.pss")))) (R.Success (S.Dotted (S.Integer 18) (S.Integer 18)))
      test "runProgram 6" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example6.pss")))) (R.Success (S.Dotted (S.Integer 87) (S.Integer 509)))   
