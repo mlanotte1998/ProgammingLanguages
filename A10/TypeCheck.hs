@@ -138,7 +138,9 @@ typeOf tenv (Cond ((e1, e2) : xs) e3) = do
                 rest <- typeOfCondList tenv xs t     
                 return ([(ty1, T.TyBase T.TyBoolean)] ++ [(ty2, t)] ++ rest)
 -- gotta fix nil                
--- typeOf _ (Nil t) = return (TyList t)  
+-- typeOf _ Nil = return (???) 
+-- -- Probably need to iterate through cons until reaching nil 
+-- -- because nil wont know what type to return
 -- typeOf tenv (Cons e1 e2) = 
 --     case typeOf tenv e1 of
 --         Success ty1 -> case typeOf tenv e2 of 
@@ -539,58 +541,58 @@ test_typeOf = do
 
      -- Tests for List Exprs 
 
-    test "typeOf test nil" (typeOf tyBase (Nil (TyBase TyInteger))) (Success $ TyList (TyBase TyInteger))  
+    -- test "typeOf test nil" (typeOf tyBase Nil) (Success )  
     
-    test "typeOf test cons all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))) 
-     (Success $ TyList (TyBase TyInteger))
+    -- test "typeOf test cons all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) Nil)) 
+    --  (Success $ TyList (TyBase TyInteger))
 
-    test "typeOf test cons all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Float 5.5) (Nil $ TyBase TyReal))))
-     (Success $ TyList (TyBase TyReal))
+    -- test "typeOf test cons all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Float 5.5) Nil)))
+    --  (Success $ TyList (TyBase TyReal))
 
-    test "typeOf test cons not all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))) 
-     (fail "Cons list has inconsistent types")
+    -- test "typeOf test cons not all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) Nil)) 
+    --  (fail "Cons list has inconsistent types")
 
-    test "typeOf test cons not all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Boolean True) (Nil $ TyBase TyReal))))
-     (fail "Cons list has inconsistent types")
+    -- test "typeOf test cons not all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil)))
+    --  (fail "Cons list has inconsistent types")
 
-    test "typeOf test cons inner element fails" (typeOf tyBase (Cons (App [Var "+", Val $ Float 5.5, Val $ Boolean False]) (Nil (TyBase TyInteger))))
-     (fail "Cons failed because of inner element error: App argument types do not match.") 
+    -- test "typeOf test cons inner element fails" (typeOf tyBase (Cons (App [Var "+", Val $ Float 5.5, Val $ Boolean False]) Nil))
+    --  (fail "Cons failed because of inner element error: App argument types do not match.") 
 
-    test "typeOf test list? succeeds" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))))
-     (Success $ TyBase TyBoolean)
+    -- test "typeOf test list? succeeds" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) Nil)))
+    --  (Success $ TyBase TyBoolean)
 
-    test "typeOf test list? fails" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))))
-     (fail "List_Pred failed because: Cons list has inconsistent types")  
+    -- test "typeOf test list? fails" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) Nil)))
+    --  (fail "List_Pred failed because: Cons list has inconsistent types")  
 
-    test "typeOf test cons? succeeds" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))))
-     (Success $ TyBase TyBoolean)
+    -- test "typeOf test cons? succeeds" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) Nil)))
+    --  (Success $ TyBase TyBoolean)
 
-    test "typeOf test cons? fails" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))))
-     (fail "Cons_Pred failed because: Cons list has inconsistent types")   
+    -- test "typeOf test cons? fails" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) Nil)))
+    --  (fail "Cons_Pred failed because: Cons list has inconsistent types")   
 
-    test "typeOf test nil? succeeds" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))))
-     (Success $ TyBase TyBoolean)
+    -- test "typeOf test nil? succeeds" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) Nil )))
+    --  (Success $ TyBase TyBoolean)
 
-    test "typeOf test nil? fails" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))))
-     (fail "Nil_Pred failed because: Cons list has inconsistent types")  
+    -- test "typeOf test nil? fails" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) Nil )))
+    --  (fail "Nil_Pred failed because: Cons list has inconsistent types")  
 
-    test "typeOf test head succeeds" (typeOf tyBase (Head (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))))
-     (Success $ TyBase TyInteger)
+    -- test "typeOf test head succeeds" (typeOf tyBase (Head (Cons (Val $ Integer 10) Nil)))
+    --  (Success $ TyBase TyInteger)
 
-    test "typeOf test head fails because expr it is called on fails" (typeOf tyBase (Head (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))))
-     (fail "Head failed because: Cons list has inconsistent types")  
+    -- test "typeOf test head fails because expr it is called on fails" (typeOf tyBase (Head (Cons (Val $ Integer 10) Nil)))
+    --  (fail "Head failed because: Cons list has inconsistent types")  
 
-    test "typeOf test head fails because expr it is called on is not a cons" (typeOf tyBase (Head (Val $ Integer 50))) 
-     (fail "Head not called on list.")
+    -- test "typeOf test head fails because expr it is called on is not a cons" (typeOf tyBase (Head (Val $ Integer 50))) 
+    --  (fail "Head not called on list.")
 
-    test "typeOf test tail succeeds" (typeOf tyBase (Tail (Cons (Val $ Integer 10) (Nil $ TyBase TyInteger))))
-     (Success $ TyList $ TyBase TyInteger)
+    -- test "typeOf test tail succeeds" (typeOf tyBase (Tail (Cons (Val $ Integer 10) Nil )))
+    --  (Success $ TyList $ TyBase TyInteger)
 
-    test "typeOf test tail fails because expr it is called on fails" (typeOf tyBase (Tail (Cons (Val $ Integer 10) (Nil $ TyBase TyBoolean))))
-     (fail "Tail failed because: Cons list has inconsistent types")  
+    -- test "typeOf test tail fails because expr it is called on fails" (typeOf tyBase (Tail (Cons (Val $ Integer 10) Nil)))
+    --  (fail "Tail failed because: Cons list has inconsistent types")  
 
-    test "typeOf test tail fails because expr it is called on is not a cons" (typeOf tyBase (Tail (Val $ Integer 50))) 
-     (fail "Tail not called on list.") 
+    -- test "typeOf test tail fails because expr it is called on is not a cons" (typeOf tyBase (Tail (Val $ Integer 50))) 
+    --  (fail "Tail not called on list.") 
    
 
 

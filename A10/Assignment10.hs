@@ -51,7 +51,6 @@ main = do
     doProgram r f = toIO $ r >>= f
 
 
-
 allTests :: IO ()
 allTests = do
     Syntax.test_fromSExpression

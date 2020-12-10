@@ -248,16 +248,21 @@ eval g m (Cons e1 e2) = evalConsList g m (Cons e1 e2)
       v1 <- eval g m e1 
       v2 <- evalConsList g m e2
       R.Success (ConsVal v1 v2)
-    evalConsList _ _ (Nil t) =  R.Success $ NilVal t
-    evalConsList _ _ _ = R.Failure "Cons not built up of lists."
+    evalConsList _ _ Nil =  R.Success $ NilVal
+    evalConsList _ _ e = do 
+      v <- eval g m e 
+      case v of 
+        ConsVal v1 v2 -> return $ ConsVal v1 v2
+        NilVal -> return NilVal
+        _ -> fail "Cons not built up of lists"
 -- Still need a pattern match for just a nil 
-eval _ _ (Nil t) = R.Success $ NilVal t
+eval _ _ Nil = R.Success NilVal 
 -- List_Pred is true for both cons and nil
 eval g m (List_Pred e) = do 
   v <- eval g m e
   case v of 
     ConsVal _ _ -> R.Success (Boolean True)
-    NilVal _ -> R.Success (Boolean True)  
+    NilVal -> R.Success (Boolean True)  
     _ -> R.Success (Boolean False)
 -- Cons_Pred is true for just Cons    
 eval g m (Cons_Pred e) = do 
@@ -269,7 +274,7 @@ eval g m (Cons_Pred e) = do
 eval g m (Nil_Pred e) = do 
   v <- eval g m e
   case v of 
-    NilVal _-> R.Success (Boolean True) 
+    NilVal -> R.Success (Boolean True) 
     _ -> R.Success (Boolean False)    
 -- Can grab the front element of only a cons list    
 eval g m (Head e) = do 
@@ -1168,43 +1173,43 @@ test_eval = do
      (fail "Lambda call received too many arguments.")   
 
     -- Tests for List expressions
-    test "eval Nil: simple" (eval builtins empty (Nil (T.TyBase T.TyBoolean))) (R.Success (NilVal (T.TyBase T.TyBoolean))) 
-    test "eval Cons: simple" (eval builtins empty (Cons (Val (Integer 10)) (Nil (T.TyBase T.TyInteger)))) 
-     (R.Success $ ConsVal (Integer 10) (NilVal (T.TyBase T.TyInteger))) 
+    test "eval Nil: simple" (eval builtins empty Nil) (R.Success NilVal) 
+    test "eval Cons: simple" (eval builtins empty (Cons (Val (Integer 10)) Nil)) 
+     (R.Success $ ConsVal (Integer 10) NilVal) 
     test "eval Cons: complex" (eval builtins empty (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) 
-     (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal)))))
-     (R.Success $ ConsVal (Float 10) (ConsVal (Float 11) (NilVal (T.TyBase T.TyReal))))
+     (Cons (Val (Float 11)) Nil)))
+     (R.Success $ ConsVal (Float 10) (ConsVal (Float 11) NilVal))
     test "eval List?: true cons" (eval builtins empty (List_Pred (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) 
-     (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal))))))
+     (Cons (Val (Float 11)) Nil))))
      (R.Success $ Boolean True) 
-    test "eval List?: true nil" (eval builtins empty (List_Pred (Nil (T.TyBase T.TyInteger))))
+    test "eval List?: true nil" (eval builtins empty (List_Pred Nil))
      (R.Success $ Boolean True)  
     test "eval List?: false anything else" (eval builtins empty (List_Pred (Val (Integer 10))))
      (R.Success $ Boolean False) 
     test "eval Cons?: true cons" (eval builtins empty (Cons_Pred (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) 
-     (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal))))))
+     (Cons (Val (Float 11)) Nil))))
      (R.Success $ Boolean True) 
-    test "eval Cons?: false nil" (eval builtins empty (Cons_Pred (Nil (T.TyBase T.TyInteger))))
+    test "eval Cons?: false nil" (eval builtins empty (Cons_Pred Nil))
      (R.Success $ Boolean False)  
     test "eval Cons?: false anything else" (eval builtins empty (Cons_Pred (Val (Integer 10))))
      (R.Success $ Boolean False) 
     test "eval Nil?: false cons" (eval builtins empty (Nil_Pred (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) 
-     (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal))))))
+     (Cons (Val (Float 11)) Nil))))
      (R.Success $ Boolean False) 
-    test "eval Nil?: true nil" (eval builtins empty (Nil_Pred (Nil (T.TyBase T.TyInteger))))
+    test "eval Nil?: true nil" (eval builtins empty (Nil_Pred Nil))
      (R.Success $ Boolean True)  
     test "eval Nil?: false anything else" (eval builtins empty (Nil_Pred (Val (Integer 10))))
      (R.Success $ Boolean False) 
     test "eval Head: on cons" (eval builtins empty (Head (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) 
-     (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal))))))
+     (Cons (Val (Float 11)) Nil))))
      (R.Success $ Float 10) 
-    test "eval Head: on nil" (eval builtins empty (Head (Nil (T.TyBase T.TyBoolean))))
+    test "eval Head: on nil" (eval builtins empty (Head Nil))
      (R.Failure "Head called on non Cons.")  
     test "eval Head: on anything else" (eval builtins empty (Head (Val (Integer 10))))
      (R.Failure "Head called on non Cons.") 
-    test "eval Tail: on cons" (eval builtins empty (Tail (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) (Cons (Val (Float 11)) (Nil (T.TyBase T.TyReal))))))
-     (R.Success $ ConsVal (Float 11) (NilVal (T.TyBase T.TyReal)))
-    test "eval Tail: on nil" (eval builtins empty (Tail (Nil (T.TyBase T.TyInteger))))
+    test "eval Tail: on cons" (eval builtins empty (Tail (Cons (App [Var "+", Val (Float 5.5), Val (Float 4.5)]) (Cons (Val (Float 11)) Nil))))
+     (R.Success $ ConsVal (Float 11) NilVal)
+    test "eval Tail: on nil" (eval builtins empty (Tail Nil))
      (R.Failure "Tail called on non Cons.")  
     test "eval Tail: on anything else" (eval builtins empty (Tail (Val (Integer 10))))
      (R.Failure "Tail called on non Cons.")            
@@ -1524,33 +1529,33 @@ test_runSExpression = do
      (fail "Wrong number or type of arguments for >=.")     
 
     -- // Cond and Else tests
-    test "Cond runSExpression Test 1" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean True, 
-        S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]], S.Symbol "Nothing"])
+    test "Cond runSExpression Test 1" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Boolean True, 
+        S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]])
         (R.Success $ S.Integer 5)
 
-    test "Cond runSExpression Test 2" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 2" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean True, 
-          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.Symbol "Nothing"])
+          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]])
         (R.Success $ S.Integer 4)
         
-    test "Cond runSExpression Test 3" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 3" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean False, 
-          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]],
-           S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
+          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]], S.List [S.Symbol "else",
+           S.List[S.Symbol "/", S.Integer 3, S.Integer 1]]])
         (R.Success $ S.Integer 3)
 
-    test "Cond runSExpression Test 4" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Boolean False, 
+    test "Cond runSExpression Test 4" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Boolean False, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean True, 
-          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
+          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]], S.List [S.Symbol "else", S.List[S.Symbol "/", S.Integer 3, S.Integer 1]]])
         (R.Success $ S.Integer 4)
 
-    test "Cond runSExpression Test 5" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Real 5.3, 
-        S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]], S.Symbol "Nothing"])
+    test "Cond runSExpression Test 5" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Real 5.3, 
+        S.List[S.Symbol "+", S.Integer 3, S.Integer 2]]])
         (fail "Cond clause was not a boolean.")  
 
-    test "Cond runSExpression Test 6" (runSExpression $ S.List[S.Symbol "cond", S.List[S.List[S.Integer 1, 
+    test "Cond runSExpression Test 6" (runSExpression $ S.List[S.Symbol "cond", S.List[S.Integer 1, 
         S.List[S.Symbol "-", S.Integer 3, S.Integer 2]], S.List[S.Boolean False, 
-          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]]], S.List[S.Symbol "/", S.Integer 3, S.Integer 1]])
+          S.List[S.Symbol "+", S.Integer 3, S.Integer 1]], S.List [S.Symbol "else", S.List[S.Symbol "/", S.Integer 3, S.Integer 1]]])
         (fail "Cond clause was not a boolean.")  
     
     -- // Complex Boolean tests
@@ -1684,31 +1689,31 @@ test_runSExpression = do
     test "Program runSExpression test 5 one define" (runSExpression sexpr_ex6) (R.Success $ S.Integer 9) 
 
     -- tests for List expressions
-    test "runSExpression List just nil" (runSExpression (S.List [S.Symbol "nil", S.Symbol "Boolean"])) (R.Success $ S.List [S.Symbol "nil", S.Symbol "Boolean"])
-    test "runSExpression List simple list" (runSExpression (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]])) 
-     (R.Success $ S.List [S.Symbol "cons",  S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]])
-    test "runSExpression List longer list" (runSExpression (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, 
-     S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (R.Success $ S.List [S.Symbol "cons",  S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, S.List [S.Symbol "nil", S.Symbol "Integer"]]])
-    test "runSExpression List list? 1" (runSExpression (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]]))  
+    test "runSExpression List just nil" (runSExpression (S.Symbol "nil")) (R.Success $ S.Symbol "nil")
+    test "runSExpression List simple list" (runSExpression (S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"])) 
+     (R.Success $ S.List [S.Symbol "cons",  S.Integer 1, S.Symbol "nil"])
+    test "runSExpression List longer list" (runSExpression (S.List [S.Symbol "cons", S.Integer 1, S.List 
+     [S.Symbol "cons", S.Integer 10, S.Symbol "nil"]])) 
+     (R.Success $ S.List [S.Symbol "cons",  S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, S.Symbol "nil"]])
+    test "runSExpression List list? 1" (runSExpression (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]]))  
      (R.Success $ S.Boolean True)
     test "runSExpression List list? 2" (runSExpression (S.List [S.Symbol "list?", S.Integer 1])) 
      (R.Success $ S.Boolean False)
     test "runSExpression List cons? 1" (runSExpression 
-     (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]]))
+     (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]]))
      (R.Success $ S.Boolean True)
     test "runSExpression List cons? 2" (runSExpression (S.List [S.Symbol "cons?", S.Integer 1])) 
      (R.Success $ S.Boolean False)
-    test "runSExpression List nil? 1" (runSExpression (S.List [S.Symbol "nil?", S.List [S.Symbol "nil", S.Symbol "Real"]])) 
+    test "runSExpression List nil? 1" (runSExpression (S.List [S.Symbol "nil?", S.Symbol "nil"])) 
      (R.Success $ S.Boolean True)
     test "runSExpression List nil? 2" (runSExpression (S.List [S.Symbol "nil?", S.Integer 1])) 
      (R.Success $ S.Boolean False)  
-    test "runSExpression List head 1" (runSExpression (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
+    test "runSExpression List head 1" (runSExpression (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
      (R.Success $ S.Integer 1)
     test "runSExpression List head 2" (runSExpression (S.List [S.Symbol "head", S.Integer 1])) 
      (R.Failure "Head called on non Cons.")
-    test "runSExpression List tail 1" (runSExpression (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (R.Success $ S.List [S.Symbol "nil", S.Symbol "Integer"])
+    test "runSExpression List tail 1" (runSExpression (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
+     (R.Success $ S.Symbol "nil")
     test "runSExpression List tail 2" (runSExpression (S.List [S.Symbol "tail", S.Integer 1])) 
      (R.Failure "Tail called on non Cons.") 
 
@@ -1728,6 +1733,8 @@ runProgramTestHelper :: (R.Result [S.Expr]) -> [S.Expr]
 runProgramTestHelper (R.Success x)= x 
 runProgramTestHelper (R.Failure f) = []
 
+exp1 = fromSExpression (head (tail (runProgramTestHelper (unsafePerformIO (P.fromFile "example6.pss")))))
+
 --tests runProgram
 test_runProgram = do 
      test "runProgram 1" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example1.pss")))) (R.Success (S.Dotted (S.Boolean False) (S.Boolean True)))
@@ -1735,7 +1742,24 @@ test_runProgram = do
      test "runProgram 3" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example3.pss")))) (R.Success (S.Integer 55)) 
      test "runProgram 4" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example4.pss")))) 
       -- valueToSExpression just returns Lambda with the variable signatures which is why the result is as is.  
-      (R.Success (S.Dotted (S.List [S.Symbol "Lambda", S.Symbol "x"])
-       (S.List [S.Symbol "Lambda", S.Symbol "x"])))              
+      (R.Success (S.Dotted (S.Dotted (S.List [S.Symbol "Lambda", S.Symbol "x", S.Symbol "y"]) (S.List [S.Symbol "Lambda", S.Symbol "x"])) 
+       (S.List [S.Symbol "Lambda", S.Symbol "x", S.Symbol "y", S.Symbol "z"])))          
      test "runProgram 5" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example5.pss")))) (R.Success (S.Dotted (S.Integer 18) (S.Integer 18)))
-     test "runProgram 6" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example6.pss")))) (R.Success (S.Dotted (S.Integer 87) (S.Integer 509)))   
+     test "runProgram 6" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example6.pss")))) (R.Success (S.List [S.Symbol "cons", S.Integer 1, 
+      S.List [S.Symbol "cons", S.Integer 2, S.List [S.Symbol "cons", S.Integer 3, S.List [S.Symbol "cons", S.Integer 4, S.List [S.Symbol "cons",S.Integer 5,
+      S.List [S.Symbol "cons",S.Integer 10, S.List [S.Symbol "cons", S.Integer 9, S.List [S.Symbol "cons", S.Integer 8, S.List [S.Symbol "cons", S.Integer 7,
+      S.List [S.Symbol "cons", S.Integer 6, S.Symbol "nil"]]]]]]]]]])) 
+     test "runProgram 7" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example7.pss")))) (R.Success (S.Integer 150))
+     test "runProgram 8" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example8.pss")))) (R.Success (S.Dotted 
+      (S.Dotted (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "cons",S.Integer 2,S.List [S.Symbol "cons",S.Integer 3,S.List [S.Symbol "cons",S.Integer 4,S.Symbol "nil"]]]]) 
+                (S.List [S.Symbol "cons",S.Integer 5, S.List [S.Symbol "cons",S.Integer 6,S.List [S.Symbol "cons",S.Integer 7,S.List [S.Symbol "cons",S.Integer 8,S.Symbol "nil"]]]])) 
+      (S.Dotted (S.List [S.Symbol "cons",S.Integer 1,S.List [S.Symbol "cons",S.Integer 2, S.List [S.Symbol "cons",S.Integer 3,S.Symbol "nil"]]]) 
+                (S.List [S.Symbol "cons",S.Integer 4,S.List [S.Symbol "cons",S.Integer 5,S.List [S.Symbol "cons",S.Integer 6, 
+                              S.List [S.Symbol "cons",S.Integer 7,S.List [S.Symbol "cons",S.Integer 8,S.Symbol "nil"]]]]]))))
+     test "runProgram 9" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example9.pss")))) (R.Success 
+      (S.List [S.Symbol "cons",S.Dotted (S.Integer 1) (S.Boolean True),S.List [S.Symbol "cons",S.Dotted (S.Integer 1) (S.Boolean False),
+       S.List [S.Symbol "cons",S.Dotted (S.Integer 2) (S.Boolean True),S.List [S.Symbol "cons",S.Dotted (S.Integer 2) (S.Boolean False),
+       S.List [S.Symbol "cons",S.Dotted (S.Integer 3) (S.Boolean True),S.List [S.Symbol "cons",S.Dotted (S.Integer 3) (S.Boolean False),
+       S.List [S.Symbol "cons",S.Dotted (S.Integer 4) (S.Boolean True),S.List [S.Symbol "cons",S.Dotted (S.Integer 4) (S.Boolean False), S.Symbol "nil"]]]]]]]]))   
+     -- extra credit is example 10  
+     --  test "runProgram 10" (runProgram (runProgramTestHelper (unsafePerformIO (P.fromFile "example10.pss"))))                    

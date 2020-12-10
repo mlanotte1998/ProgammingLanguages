@@ -39,7 +39,7 @@ data Value =  Closure [Variable] Expr Env
             | PairVal Value Value
             | PrimOp Op [Value]
             | ConsVal Value Value
-            | NilVal T.Type
+            | NilVal
         deriving(Show, Eq) 
 
 data Op = Op String ([Value] -> R.Result Value)  
@@ -110,7 +110,7 @@ data Expr = Val Value
           | App [Expr]
           | Pair Expr Expr
           | Cons Expr Expr
-          | Nil T.Type
+          | Nil
           | List_Pred Expr
           | Cons_Pred Expr
           | Nil_Pred Expr
@@ -271,7 +271,7 @@ listOfArgsToVars (x:xs) ((S.Symbol y):ys) = do
 
 -- Examples of S-Expressions representing a variety of Programs, including simple and nested Programs
 -- and programs including Defun and Define
-sexpr_ex1 = S.List[S.Symbol "Program", S.List[(S.Integer 5)]]
+sexpr_ex1 = S.List[S.Symbol "Program", S.List[S.Integer 5]]
 
 sexpr_ex2 = S.List [S.Symbol "Program", S.List[S.List [S.Symbol "incr", S.Symbol ":", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Integer"]], 
  S.List[S.Symbol "defun", S.Symbol "incr", S.List [S.Symbol "x"], 
@@ -356,6 +356,8 @@ fromSExpression :: S.Expr -> Expr
 fromSExpression (S.Integer i) = Val (Integer i)
 fromSExpression (S.Boolean b) = Val (Boolean b)
 fromSExpression (S.Real r) = Val (Float r)
+-- Need nil before normal symbol
+fromSExpression (S.Symbol "nil") = Nil
 fromSExpression (S.Symbol s) = Var s
 fromSExpression (S.List[S.Symbol "left", e1]) = Left (fromSExpression e1)
 fromSExpression (S.List[S.Symbol "right", e1]) = Right (fromSExpression e1)
@@ -369,9 +371,6 @@ fromSExpression (S.List[S.Symbol "boolean?", e]) = Boolean_Pred (fromSExpression
 fromSExpression (S.List[S.Symbol "pair?", e]) = Pair_Pred (fromSExpression e)
 -- New List Expr pattern matches
 fromSExpression (S.List [S.Symbol "cons", e1, e2]) = Cons (fromSExpression e1) (fromSExpression e2)
-fromSExpression (S.List [S.Symbol "nil", t]) = 
-  case T.fromSExpression t of 
-    R.Success t' -> Nil t'
     -- fall through error should never happen
 fromSExpression (S.List [S.Symbol "list?", e]) = List_Pred (fromSExpression e)
 fromSExpression (S.List [S.Symbol "cons?", e]) = Cons_Pred (fromSExpression e)
@@ -382,19 +381,16 @@ fromSExpression (S.List [S.Symbol "let", S.List [S.Symbol x, e1], e2]) =
     Let x (fromSExpression e1) (fromSExpression e2)
 fromSExpression (S.List [S.Symbol "if", e1, e2, e3]) =
     If (fromSExpression e1) (fromSExpression e2) (fromSExpression e3) 
-fromSExpression (S.List [S.Symbol "cond", S.List x, e]) = 
-    Cond (fromSExpressionTupleListHelper x)  (handleElse e) 
-        where 
+-- empty cond    
+fromSExpression (S.List [S.Symbol "cond"]) = Cond [] Nothing    
+fromSExpression (S.List (S.Symbol "cond" : xs)) = 
+  Cond (fromSExpressionTupleListHelper xs) (handleElse (last xs))  
+   where 
             handleElse :: S.Expr -> Maybe Expr 
-            handleElse (S.Symbol "Nothing") = Nothing 
-            handleElse e = Just (fromSExpression e)
-fromSExpression (S.List (S.Symbol "cond": xs)) = 
-    Cond (fromSExpressionTupleListHelper (init xs))  (handleElse (last xs)) 
-        where 
-            handleElse :: S.Expr -> Maybe Expr 
-            handleElse (S.Symbol "Nothing") = Nothing 
-            handleElse (S.List [S.Symbol "else", x]) = Just (fromSExpression x)
-            handleElse e = Just (fromSExpression e)            
+            -- if the last list element is an else then do a Just
+            handleElse (S.List [S.Symbol "else", e]) = Just (fromSExpression e)
+            -- otherwise then no else so nothing. 
+            handleElse _ = Nothing     
 fromSExpression (S.List [S.Symbol "lambda", S.List vars, body]) = 
   Lambda (listFromSExpressionVarList vars) (fromSExpression body)            
 -- all other lists are assumed to be function apps, like +, -, etc            
@@ -413,7 +409,9 @@ listFromSExpressionVarList (S.Symbol name : xs) = name : listFromSExpressionVarL
 -- the SExpr version of Expr tuples (Lists of two elements are the tuples)    
 fromSExpressionTupleListHelper :: [S.Expr] -> [(Expr, Expr)] 
 fromSExpressionTupleListHelper [] =  [] 
-fromSExpressionTupleListHelper (S.List [t1, t2]:xs) = ((fromSExpression t1), (fromSExpression t2)) : fromSExpressionTupleListHelper xs     
+-- if else is in this then ignore it because it is being held elsewhere.
+fromSExpressionTupleListHelper (S.List [S.Symbol "else", _]: []) = []
+fromSExpressionTupleListHelper (S.List [t1, t2]:xs) = (fromSExpression t1, fromSExpression t2) : fromSExpressionTupleListHelper xs     
 
 -- Test that the helper function works correctly. 
 test_fromSExpressionTupleListHelper = do 
@@ -686,45 +684,45 @@ test_fromSExpression = do
      (App [Var ">=", (If (Val (Boolean True)) (Val (Boolean True)) (Val (Boolean False))), (Let "v" (Val (Float 6.3)) (Val (Float 6.3)))])   
      
     -- Cond tests 
-    test "fromSExpression Cond  basic test" (fromSExpression $ S.List [S.Symbol "cond", S.List [], S.Symbol "Nothing"]) (Cond [] Nothing) 
+    test "fromSExpression Cond  basic test" (fromSExpression $ S.List [S.Symbol "cond"]) (Cond [] Nothing) 
 
     test "fromSExpression Cond complex test 1" (fromSExpression $ S.List 
-     [S.Symbol "cond", S.List [S.List [S.Integer 1, S.Integer 5]], S.Symbol "Nothing"]) 
-     (Cond [(Val (Integer 1), (Val (Integer 5)))] Nothing) 
+     [S.Symbol "cond", S.List [S.Integer 1, S.Integer 5]]) 
+     (Cond [(Val (Integer 1), Val (Integer 5))] Nothing) 
 
-    test "fromSExpression Cond complex test 2" (fromSExpression $ S.List [S.Symbol "cond", S.List [
-     S.List [S.Integer 1, S.Integer 5], S.List [S.Boolean True, S.Real 5.5]], S.Symbol "Nothing"]) 
+    test "fromSExpression Cond complex test 2" (fromSExpression $ S.List [S.Symbol "cond", 
+     S.List [S.Integer 1, S.Integer 5], S.List [S.Boolean True, S.Real 5.5]]) 
        (Cond [(Val (Integer 1), Val (Integer 5)), (Val (Boolean True), Val (Float 5.5))] Nothing)
 
-    test "fromSExpression Cond with an else" (fromSExpression $ S.List [S.Symbol "cond", S.List [
-     S.List [S.Integer 1, S.Integer 5]], (S.Real 5.5)]) 
+    test "fromSExpression Cond with an else" (fromSExpression $ S.List [S.Symbol "cond", 
+     S.List [S.Integer 1, S.Integer 5], S.List [S.Symbol "else", S.Real 5.5]]) 
        (Cond [(Val (Integer 1), Val (Integer 5))] (Just (Val (Float 5.5))))    
 
       -- list tests 
-    test "fromSExpression List just nil" (fromSExpression (S.List [S.Symbol "nil", S.Symbol "Boolean"])) (Nil (T.TyBase T.TyBoolean))
-    test "fromSExpression List simple list" (fromSExpression (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]])) 
-     (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger)))
+    test "fromSExpression List just nil" (fromSExpression (S.Symbol "nil")) Nil
+    test "fromSExpression List simple list" (fromSExpression (S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"])) 
+     (Cons (Val (Integer 1)) Nil)
     test "fromSExpression List longer list" (fromSExpression (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, 
-     S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (Cons (Val (Integer 1)) (Cons (Val (Integer 10)) (Nil (T.TyBase T.TyInteger))))
-    test "fromSExpression List list? 1" (fromSExpression (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (List_Pred (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))
+     S.Symbol "nil"]])) 
+     (Cons (Val (Integer 1)) (Cons (Val (Integer 10)) Nil))
+    test "fromSExpression List list? 1" (fromSExpression (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
+     (List_Pred (Cons (Val (Integer 1)) Nil))
     test "fromSExpression List list? 2" (fromSExpression (S.List [S.Symbol "list?", S.Integer 1])) 
      (List_Pred (Val (Integer 1)))
-    test "fromSExpression List cons? 1" (fromSExpression (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (Cons_Pred (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))
+    test "fromSExpression List cons? 1" (fromSExpression (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
+     (Cons_Pred (Cons (Val (Integer 1)) Nil))
     test "fromSExpression List cons? 2" (fromSExpression (S.List [S.Symbol "cons?", S.Integer 1])) 
      (Cons_Pred (Val (Integer 1))) 
-    test "fromSExpression List nil? 1" (fromSExpression (S.List [S.Symbol "nil?", S.List [S.Symbol "nil", S.Symbol "Real"]])) 
-     (Nil_Pred (Nil (T.TyBase T.TyReal)))
+    test "fromSExpression List nil? 1" (fromSExpression (S.List [S.Symbol "nil?", S.Symbol "nil"])) 
+     (Nil_Pred Nil)
     test "fromSExpression List nil? 2" (fromSExpression (S.List [S.Symbol "nil?", S.Integer 1])) 
      (Nil_Pred (Val (Integer 1)))  
-    test "fromSExpression List head 1" (fromSExpression (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (Head (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))
+    test "fromSExpression List head 1" (fromSExpression (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
+     (Head (Cons (Val (Integer 1)) Nil))
     test "fromSExpression List head 2" (fromSExpression (S.List [S.Symbol "head", S.Integer 1])) 
      (Head (Val (Integer 1))) 
-    test "fromSExpression List tail 1" (fromSExpression (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])) 
-     (Tail (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))
+    test "fromSExpression List tail 1" (fromSExpression (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])) 
+     (Tail (Cons (Val (Integer 1)) Nil))
     test "fromSExpression List tail 2" (fromSExpression (S.List [S.Symbol "tail", S.Integer 1])) 
      (Tail (Val (Integer 1)))     
     
@@ -847,35 +845,35 @@ test_fromSExpression = do
 
 -- |Convert a protoScheme expression into its s-expression representation
 toSExpression :: Expr -> S.Expr
-toSExpression (Val (Integer i)) = S.Integer i 
+toSExpression (Val (Integer i)) = S.Integer i  
 toSExpression (Val (Boolean b)) = S.Boolean b
 toSExpression (Val (Float f)) = S.Real f 
 toSExpression (Var v) = S.Symbol v 
 toSExpression (Left x) = S.List[S.Symbol "left", toSExpression x]
 toSExpression (Right x) = S.List[S.Symbol "right", toSExpression x]
-toSExpression (Pair x y) = S.List[S.Symbol "pair", (toSExpression x), (toSExpression y)]
-toSExpression (And x y) = S.List [S.Symbol "and", (toSExpression x), (toSExpression y)]
-toSExpression (Or x y) = S.List [S.Symbol "or", (toSExpression x), (toSExpression y)]
-toSExpression (Boolean_Pred x) = S.List[S.Symbol "boolean?", (toSExpression x)]
-toSExpression (Integer_Pred x) = S.List[S.Symbol "integer?", (toSExpression x)]
-toSExpression (Real_Pred x) = S.List[S.Symbol "real?", (toSExpression x)]
-toSExpression (Number_Pred x) = S.List[S.Symbol "number?", (toSExpression x)]
-toSExpression (Pair_Pred x) = S.List[S.Symbol "pair?", (toSExpression x)]
+toSExpression (Pair x y) = S.List[S.Symbol "pair", toSExpression x, toSExpression y]
+toSExpression (And x y) = S.List [S.Symbol "and", toSExpression x, toSExpression y]
+toSExpression (Or x y) = S.List [S.Symbol "or", toSExpression x, toSExpression y]
+toSExpression (Boolean_Pred x) = S.List[S.Symbol "boolean?", toSExpression x]
+toSExpression (Integer_Pred x) = S.List[S.Symbol "integer?", toSExpression x]
+toSExpression (Real_Pred x) = S.List[S.Symbol "real?", toSExpression x]
+toSExpression (Number_Pred x) = S.List[S.Symbol "number?", toSExpression x]
+toSExpression (Pair_Pred x) = S.List[S.Symbol "pair?", toSExpression x]
 toSExpression (Let v x y) = S.List [S.Symbol "let", S.List [S.Symbol v, toSExpression x], toSExpression y]
 toSExpression (If x y z) = S.List [S.Symbol "if", toSExpression x, toSExpression y, toSExpression z]
 toSExpression (Cond x Nothing) = S.List [S.Symbol "cond", S.List (toSExpressionTupleListHelper x), S.Symbol "Nothing"]
 toSExpression (Cond x (Just e)) = S.List [S.Symbol "cond", 
- S.List (toSExpressionTupleListHelper x), (toSExpression e)]
+ S.List (toSExpressionTupleListHelper x), toSExpression e]
 toSExpression (Lambda vars body) = S.List [S.Symbol "lambda", S.List (listOfVarsToSExpressionList vars), toSExpression body]
 toSExpression (App (func: args)) = S.List (toSExpression func : listToSExpressionList args) 
 -- new list pattern matches
 toSExpression (Cons x y) = S.List [S.Symbol "cons", toSExpression x, toSExpression y]
-toSExpression (Nil t) = S.List [S.Symbol "nil", T.toSExpression t]
+toSExpression Nil = S.Symbol "nil"
 toSExpression (List_Pred x) = S.List [S.Symbol "list?", toSExpression x]
 toSExpression (Cons_Pred x) = S.List [S.Symbol "cons?", toSExpression x]
 toSExpression (Nil_Pred x) = S.List [S.Symbol "nil?", toSExpression x]
 toSExpression (Head x) = S.List [S.Symbol "head", toSExpression x]
-toSExpression (Tail x) = S.List [S.Symbol "tail", toSExpression x]
+toSExpression (Tail x) = S.List [S.Symbol "tail", toSExpression x] 
 
 -- Function for converting each S.Expr argument for the Call
 listToSExpressionList :: [Expr] -> [S.Expr]
@@ -1262,31 +1260,31 @@ test_toSExpression = do
   test "toSExpression App 3" (toSExpression (App [Var "constant", Val (Boolean True)])) (S.List[S.Symbol"constant", S.Boolean True])
 
 -- tests for List expressions
-  test "toSExpression Nil" (toSExpression (Nil (T.TyBase T.TyReal))) (S.List [S.Symbol "nil", S.Symbol "Real"]) 
-  test "toSExpression List simple list" (toSExpression (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger)))) (S.List [S.Symbol "cons", S.Integer 1, 
-   S.List [S.Symbol "nil", S.Symbol "Integer"]])
-  test "toSExpression List longer list" (toSExpression (Cons (Val (Integer 1)) (Cons (Val (Integer 10)) (Nil (T.TyBase T.TyInteger))))) 
-   (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, S.List [S.Symbol "nil", S.Symbol "Integer"]]]) 
-  test "toSExpression List list? 1" (toSExpression (List_Pred (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))) 
-   (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])
+  test "toSExpression Nil" (toSExpression (Nil)) (S.Symbol "nil")
+  test "toSExpression List simple list" (toSExpression (Cons (Val (Integer 1)) (Nil))) (S.List [S.Symbol "cons", S.Integer 1, 
+   S.Symbol "nil"])
+  test "toSExpression List longer list" (toSExpression (Cons (Val (Integer 1)) (Cons (Val (Integer 10)) (Nil)))) 
+   (S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "cons", S.Integer 10, S.Symbol "nil"]]) 
+  test "toSExpression List list? 1" (toSExpression (List_Pred (Cons (Val (Integer 1)) (Nil)))) 
+   (S.List [S.Symbol "list?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])
   test "toSExpression List list? 2" (toSExpression (List_Pred (Val (Integer 1)))) 
    (S.List [S.Symbol "list?", S.Integer 1])
-  test "toSExpression List cons? 1" (toSExpression (Cons_Pred (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))) 
-   (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])
-  test "toSExpression List cons? 2" (toSExpression (Cons_Pred (Val (Integer 1)))) 
+  test "toSExpression List cons? 1" (toSExpression (Cons_Pred (Cons (Val (Integer 1)) (Nil)))) 
+   (S.List [S.Symbol "cons?", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])
+  test "toSExpression List cons? 2" (toSExpression (Cons_Pred (Val (Integer 1))))  
    (S.List [S.Symbol "cons?", S.Integer 1])
-  test "toSExpression List nil? 1" (toSExpression  (Nil_Pred (Nil (T.TyBase T.TyInteger)))) 
-   (S.List [S.Symbol "nil?", S.List [S.Symbol "nil", S.Symbol "Integer"]])
+  test "toSExpression List nil? 1" (toSExpression  (Nil_Pred (Nil))) 
+   (S.List [S.Symbol "nil?", S.Symbol "nil"])
   test "toSExpression List nil? 2" (toSExpression (Nil_Pred (Val (Integer 1)))) 
    (S.List [S.Symbol "nil?", S.Integer 1])
-  test "toSExpression List head 1" (toSExpression (Head (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))) 
-   (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])
+  test "toSExpression List head 1" (toSExpression (Head (Cons (Val (Integer 1)) (Nil)))) 
+   (S.List [S.Symbol "head", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])
   test "toSExpression List head 2" (toSExpression (Head (Val (Integer 1))) ) 
    (S.List [S.Symbol "head", S.Integer 1])
-  test "toSExpression List tail 1" (toSExpression (Tail (Cons (Val (Integer 1)) (Nil (T.TyBase T.TyInteger))))) 
-   (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.List [S.Symbol "nil", S.Symbol "Integer"]]])
+  test "toSExpression List tail 1" (toSExpression (Tail (Cons (Val (Integer 1)) (Nil)))) 
+   (S.List [S.Symbol "tail", S.List [S.Symbol "cons", S.Integer 1, S.Symbol "nil"]])
   test "toSExpression List tail 2" (toSExpression (Tail (Val (Integer 1)))) 
-   (S.List [S.Symbol "tail", S.Integer 1])
+   (S.List [S.Symbol "tail", S.Integer 1]) 
      
 
 --  =========================================================================================================== 
@@ -1301,7 +1299,7 @@ valueToSExpression (PairVal x y) = S.Dotted (valueToSExpression x) (valueToSExpr
 valueToSExpression (Closure x _ _) = S.List (S.Symbol "Lambda" : listOfVarsToSExpressionList x)
 valueToSExpression (PrimOp (Op x _) _) =  S.List [S.Symbol "Op", S.Symbol x]
 valueToSExpression (ConsVal v1 v2) = S.List [S.Symbol "cons", valueToSExpression v1, valueToSExpression v2]
-valueToSExpression (NilVal t) = S.List [S.Symbol "nil", T.toSExpression t] 
+valueToSExpression NilVal = S.Symbol "nil" 
 
 test_valueToSExpression = do
     test "valueToSExpression 42"
@@ -1332,8 +1330,8 @@ test_valueToSExpression = do
         (valueToSExpression addOp)
         (S.List [S.Symbol "Op",S.Symbol "+"])
     test "valueToSExpression Nil" 
-        (valueToSExpression $ NilVal (T.TyBase T.TyBoolean))
-        (S.List [S.Symbol "nil", S.Symbol "Boolean"])
+        (valueToSExpression NilVal)
+         (S.Symbol "nil")
     test "valueToSExpression Cons" 
-        (valueToSExpression (ConsVal (Integer 10) (ConsVal (Integer 20) (NilVal (T.TyBase T.TyInteger)))))
-        (S.List [S.Symbol "cons", S.Integer 10, S.List [S.Symbol "cons", S.Integer 20, S.List [S.Symbol "nil", S.Symbol "Integer"]]])                         
+        (valueToSExpression (ConsVal (Integer 10) (ConsVal (Integer 20) (NilVal))))
+        (S.List [S.Symbol "cons", S.Integer 10, S.List [S.Symbol "cons", S.Integer 20, S.Symbol "nil"]])                          
