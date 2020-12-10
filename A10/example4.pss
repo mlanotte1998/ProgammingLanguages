@@ -1,0 +1,9 @@
+(let (boolean->integer (lambda (x) (if x 1 0)))
+  (let (integer-integer->boolean (lambda (x y) (= x (* y 10))))
+    (let (f (lambda (x y z) (and (< (+ (right y) x) 10) (or z (left y)))))
+      (pair (pair integer-integer->boolean boolean->integer)
+            f))))
+;; : (Pair-of (Pair-of (-> Integer Integer Boolean) (-> Boolean Integer))
+;;            (-> Integer (Pair-of Boolean Integer) Boolean Boolean))
+
+;; vim: ft=lisp

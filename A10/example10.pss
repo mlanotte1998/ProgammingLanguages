@@ -1,0 +1,64 @@
+(map : (All (A B) (-> (-> A B) (List-of A) (List-of B))))
+(defun map (f l) 
+  (cond [(nil? l) nil]
+        [(cons? l) (cons (f (head l)) 
+                         (map f (tail l)))]))
+
+(filter : (All (A) (-> (-> A Boolean) (List-of A) (List-of A))))
+(defun filter (p l)
+  (cond [(nil? l) nil]
+        [(cons? l) (if (p (head l))
+                       (cons (head l) (filter p (tail l)))
+                       (filter p (tail l)))]))
+
+(foldr : (All (A B) (-> (-> A B B) B (List-of A) B)))
+(defun foldr (f base l)
+  (cond [(nil? l) base]
+        [(cons? l) (f (head l) 
+                      (foldr f base (tail l)))]))
+
+(foldl : (All (A B) (-> (-> B A B) B (List-of A) B)))
+(defun foldl (f acc l)
+  (cond [(nil? l) acc]
+        [(cons? l) (foldl f (f acc (head l)) (tail l))]))
+
+(zip : (All (A B) (-> (List-of A) (List-of B) (List-of (Pair-of A B)))))
+(defun zip (l1 l2)
+  (cond [(or (nil? l1) (nil? l2)) nil]
+        [else (cons (pair (head l1) (head l2)) 
+                    (zip (tail l1) (tail l2)))]))
+
+(unzip : (All (A B) (-> (List-of (Pair-of A B)) (Pair-of (List-of A) (List-of B)))))
+(defun unzip (l)
+  (cond [(nil? l) (pair nil nil)]
+        [(cons? l) 
+         (let (unzipped (unzip (tail l)))
+           (pair (cons (left (head l)) (left unzipped))
+                 (cons (right (head l)) (right unzipped))))]))
+
+(flip : (All (A B C) (-> (-> A B C) (-> B A C))))
+(defun flip (f)
+  (lambda (x y) (f y x)))
+
+( even? : (-> Integer Boolean) )
+(defun even? (n) 
+   (or (= n 0)
+       (odd? (- n 1))))
+
+( odd? : (-> Integer Boolean))
+(defun odd? (n)
+   (and (not (= n 0))
+        (even? (- n 1))))
+
+(let (l1 (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 nil))))))
+  (pair 
+    (map (lambda (x) (+ x 1)) 
+         (filter odd? l1))
+    (pair (foldl - 0 l1)
+          (pair (foldr * 1 l1)
+                (let (l2 (zip l1 (map even? l1)))
+                  (pair l2
+                        (pair (unzip l2)
+                              flip)))))))
+
+;; vim: ft=lisp

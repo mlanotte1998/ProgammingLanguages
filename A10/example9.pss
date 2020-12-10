@@ -1,0 +1,24 @@
+(append : (-> (List-of (Pair-of Integer Boolean))
+              (List-of (Pair-of Integer Boolean))
+              (List-of (Pair-of Integer Boolean))))
+(defun append (l1 l2) 
+  (cond [(nil? l1) l2]
+        [(cons? l1) (cons (head l1) (append (tail l1) l2))]))
+
+(cross-product : (-> (List-of Integer) (List-of Boolean) (List-of (Pair-of Integer Boolean))))
+(defun cross-product (ints bools)
+  (cond [(nil? ints) nil]
+        [(cons? ints) (append (pairs-with (head ints) bools) 
+                              (cross-product (tail ints) bools))]))
+
+(pairs-with : (-> Integer (List-of Boolean) (List-of (Pair-of Integer Boolean))))
+(defun pairs-with (i bools)
+  (cond [(nil? bools) nil]
+        [(cons? bools) (cons (pair i (head bools))
+                             (pairs-with i (tail bools)))]))
+
+(cross-product (cons 1 (cons 2 (cons 3 (cons 4 nil))))
+               (cons #t (cons #f nil)))
+;; : (List-of (Pair-of Integer Boolean))
+
+;; vim: ft=lisp

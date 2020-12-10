@@ -1,0 +1,32 @@
+(take/integer : (-> Integer (List-of Integer) (List-of Integer)))
+(defun take/integer (n l) 
+  (cond [(or (<= n 0) (nil? l)) nil]
+        [(cons? l) (cons (head l) (take/integer (- n 1) (tail l)))]))
+
+(drop/integer : (-> Integer (List-of Integer) (List-of Integer)))
+(defun drop/integer (n l) 
+  (cond [(or (<= n 0) (nil? l)) l]
+        [(cons? l) (drop/integer (- n 1) (tail l))]))
+
+(span/integer : (-> (-> Integer Boolean) (List-of Integer) (Pair-of (List-of Integer) (List-of Integer))))
+(defun span/integer (p l)
+  (cond [(nil? l) (pair nil nil)]
+        [(cons? l)
+         (let (res (span/integer p (tail l)))
+           (if (p (head l))
+               (pair (cons (head l) (left res))
+                     (right res))
+               (pair nil
+                     l)))]))
+
+
+(let (l (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 (cons 6 (cons 7 (cons 8 nil)))))))))
+  (pair (pair (take/integer 4 l)
+              (drop/integer 4 l)) 
+        (span/integer (lambda (x) (< x 4)) l))) 
+
+;; : (Pair-of (Pair-of (List-of Integer) (List-of Integer))
+;;            (Pair-of (List-of Integer) (List-of Integer)))
+
+;; vim: ft=lisp
+

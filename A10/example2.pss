@@ -1,0 +1,12 @@
+(x : Integer)
+(define x 32)
+
+(pow : (-> Integer Integer Integer))
+(defun pow (n m) 
+  (if (<= m 0)
+      1
+      (* n (pow n (- m 1)))))
+
+(pow 2 x) ;; : Integer
+
+;; vim: ft=lisp

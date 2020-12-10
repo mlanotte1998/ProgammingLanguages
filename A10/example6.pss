@@ -1,0 +1,16 @@
+
+(append/integer : (-> (List-of Integer) (List-of Integer) (List-of Integer)))
+(defun append/integer (l1 l2) 
+  (cond [(nil? l1) l2]
+        [(cons? l1) (cons (head l1) (append/integer (tail l1) l2))]))
+
+(reverse/integer : (-> (List-of Integer) (List-of Integer)))
+(defun reverse/integer (l)
+  (cond [(nil? l) nil]
+        [(cons? l) (append/integer (reverse/integer (tail l)) 
+                                   (cons (head l) nil))]))
+
+(append/integer (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 nil))))) 
+                (reverse/integer (cons 6 (cons 7 (cons 8 (cons 9 (cons 10 nil))))))) ;; : (List-of Integer)
+
+;; vim: ft=lisp

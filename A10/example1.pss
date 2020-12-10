@@ -1,0 +1,13 @@
+( even? : (-> Integer Boolean) )
+(defun even? (n) 
+   (or (= n 0)
+       (odd? (- n 1))))
+
+( odd? : (-> Integer Boolean))
+(defun odd? (n)
+   (and (not (= n 0))
+        (even? (- n 1))))
+
+(pair (odd? 42) (even? 42)) ;; : (Pair-of Boolean Boolean)
+
+;; vim: ft=lisp

@@ -1,0 +1,9 @@
+
+(sum : (-> (List-of Integer) Integer))
+(defun sum (l) 
+  (cond [(nil? l) 0]
+        [(cons? l) (+ (head l) (sum (tail l)))]))
+
+(sum (cons 10 (cons 20 (cons 30 (cons 40 (cons 50 nil)))))) ;; : Integer
+
+;; vim: ft=lisp
