@@ -59,14 +59,14 @@ typeOf tenv (Pair l r) = do
     return (T.TyPair l' r', cl ++ cr)
 typeOf tenv (Left e) = do 
     (t1, c1) <- typeOf tenv e
-    case t1 of 
-        T.TyPair l r -> return (l, ([(t1, (T.TyPair l r))] ++ c1))
-        _ -> fail "Left was not called on a pair."
+    let tL = T.TyVar $ gensym "L"
+    let tR = T.TyVar $ gensym "R"
+    return (tL, (t1, T.TyPair tL tR) : c1)  
 typeOf tenv (Right e) = do
     (t1, c1) <- typeOf tenv e
-    case t1 of 
-        T.TyPair l r -> return (r, ([(t1, (T.TyPair l r))] ++ c1))   
-        _ -> fail "Right was not called on a pair."
+    let tL = T.TyVar $ gensym "L"
+    let tR = T.TyVar $ gensym "R"
+    return (tR, (t1, T.TyPair tL tR) : c1)   
 typeOf tenv (Lambda vars e) = do
     -- make env with all of the variables and get the type and constraints of the body.
     (tenv', vartypes) <- Success $ addVarsToEnv tenv vars []
@@ -97,14 +97,9 @@ typeOf tenv (App (func : argList)) = do
         getArgumentTypeList tenv [] = Success ([], [])
 typeOf tenv (If e1 e2 e3) = do
     (ty1, c1) <- typeOf tenv e1
-    case ty1 of 
-        T.TyBase T.TyBoolean -> do
-            (ty2, c2) <- typeOf tenv e2
-            (ty3, c3) <- typeOf tenv e3
-            if ty2 == ty3
-                then return (ty2, [(ty1, T.TyBase T.TyBoolean), (ty2, ty3)] ++ c1 ++ c2 ++ c3)
-                else fail "Incompatible return types for If"
-        _ -> fail "First argument in If was not of type TyBoolean."       
+    (ty2, c2) <- typeOf tenv e2
+    (ty3, c3) <- typeOf tenv e3
+    return (ty2, [(ty1, T.TyBase T.TyBoolean), (ty2, ty3)] ++ c1 ++ c2 ++ c3)   
 typeOf tenv (And e1 e2) = do 
     (ty1, c1) <- typeOf tenv e1 
     (ty2, c2) <- typeOf tenv e2
@@ -136,43 +131,37 @@ typeOf tenv (Cond ((e1, e2) : xs) e3) = do
                 (ty1, c1) <- typeOf tenv e1 
                 (ty2, c2) <- typeOf tenv e2 
                 rest <- typeOfCondList tenv xs t     
-                return ([(ty1, T.TyBase T.TyBoolean)] ++ c1 ++ [(ty2, t)] ++ c2 ++ rest)
--- gotta fix nil                
--- typeOf _ Nil = return (???) 
--- -- Probably need to iterate through cons until reaching nil 
--- -- because nil wont know what type to return
--- typeOf tenv (Cons e1 e2) = 
---     case typeOf tenv e1 of
---         Success ty1 -> case typeOf tenv e2 of 
---                             Success (TyList ty2) -> if ty1 == ty2 
---                                              then return (TyList ty2)
---                                              else fail "Cons list has inconsistent types" 
---                             Success _ -> fail "Cons list is not properly structed."                 
---                             f -> f 
---         Failure f -> fail $ "Cons failed because of inner element error: " ++ f                
--- -- For predicates, if e type checks to anything then return boolean        
--- typeOf tenv (List_Pred e) = 
---     case typeOf tenv e of 
---         Success _ -> return $ TyBase TyBoolean
---         Failure f -> fail $ "List_Pred failed because: " ++ f  
--- typeOf tenv (Cons_Pred e) = 
---     case typeOf tenv e of 
---         Success _ -> return $ TyBase TyBoolean
---         Failure f -> fail $ "Cons_Pred failed because: " ++ f 
--- typeOf tenv (Nil_Pred e) = 
---     case typeOf tenv e of 
---         Success _ -> return $ TyBase TyBoolean
---         Failure f -> fail $ "Nil_Pred failed because: " ++ f
--- typeOf tenv (Head e) = do 
---     case typeOf tenv e of 
---         Success (TyList t) -> return t
---         Success _ -> fail "Head not called on list."
---         Failure f -> fail $ "Head failed because: " ++ f       
--- typeOf tenv (Tail e) = do 
---     case typeOf tenv e of 
---         Success (TyList t) -> return (TyList t)
---         Success _ -> fail "Tail not called on list."
---         Failure f -> fail $ "Tail failed because: " ++ f                                               
+                return ([(ty1, T.TyBase T.TyBoolean)] ++ c1 ++ [(ty2, t)] ++ c2 ++ rest)         
+typeOf _ Nil = return (T.TyList (T.TyVar "Nil"), []) 
+typeOf tenv (Cons e1 e2) = 
+    case typeOf tenv e1 of
+        Success (ty1, c1) -> case e2 of 
+                                Nil -> return (T.TyList ty1, c1)
+                                _ -> do 
+                                    (ty2, c2) <- typeOf tenv e2    
+                                    return (T.TyList ty1, c1 ++ [(ty2, T.TyList ty1)] ++ c2)
+        Failure f -> fail $ "Cons failed because of inner element error: " ++ f                
+-- For predicates, if e type checks to anything then return boolean        
+typeOf tenv (List_Pred e) = 
+    case typeOf tenv e of 
+        Success (_, c) -> return (T.TyBase T.TyBoolean, c)
+        Failure f -> fail $ "List_Pred failed because: " ++ f  
+typeOf tenv (Cons_Pred e) = 
+    case typeOf tenv e of 
+        Success (_, c) -> return (T.TyBase T.TyBoolean, c)
+        Failure f -> fail $ "Cons_Pred failed because: " ++ f 
+typeOf tenv (Nil_Pred e) = 
+    case typeOf tenv e of 
+        Success (_, c) -> return (T.TyBase T.TyBoolean, c)
+        Failure f -> fail $ "Nil_Pred failed because: " ++ f
+typeOf tenv (Head e) = do 
+    (ty, c) <- typeOf tenv e 
+    let tX = T.TyVar $ gensym "A"
+    return (tX, (T.TyList tX, ty) : c)     
+typeOf tenv (Tail e) = do 
+    (ty, c) <- typeOf tenv e 
+    let tX = T.TyVar $ gensym "B"
+    return (T.TyList tX, (T.TyList tX, ty) : c)                                               
 
 typeOf _ _ = fail "Given incompatible expr."
 
@@ -183,8 +172,7 @@ typeOfProgram :: TyEnv -> Program -> Result T.Type
 typeOfProgram tenv (Program globalDefs e) = 
     case ensureGlobalDefTypes tenv globalDefs of 
         Success tenv' -> do 
-            (t, c) <- typeOf tenv' e
-            return t
+            typeCheck tenv' e
         Failure f -> fail f
 
 -- Adds all of the program define and defun types to the type environment
@@ -199,8 +187,8 @@ typeOfProgramTyEnv tenv (S.List[S.Symbol name, S.Symbol ":", typeSignature] : _ 
 ensureGlobalDefTypes :: TyEnv -> [GlobalDef] -> Result TyEnv
 ensureGlobalDefTypes tenv [] = return tenv 
 ensureGlobalDefTypes tenv ((Define (Sig name _) e):xs) = do 
-    case typeOf tenv e of 
-        Success (ty, c) -> do 
+    case typeCheck tenv e of 
+        Success ty -> do 
             -- will always be defined but in here as precaution
             ty' <- fromMaybe' ("Variable " ++ name ++ " is not defined") $ get tenv name
             if ty == ty' 
@@ -273,11 +261,11 @@ test_typeOf = do
 
     test "typeOf test left on pair" (typeCheck tyBase (Left (Pair (Val (Integer 10)) (Val (Float 4.1))))) (Success (T.TyBase T.TyInteger))
 
-    test "typeOf test left not on pair" (typeCheck tyBase (Left (Val (Integer 10)))) (Failure "Left was not called on a pair.")
+    test "typeOf test left not on pair" (typeCheck tyBase (Left (Val (Integer 10)))) (Failure "Could not unify Integer and (Pair-of L#3 R#4)")
 
     test "typeOf test right on pair" (typeCheck tyBase (Right (Pair (Val (Integer 10)) (Val (Float 4.1))))) (Success (T.TyBase T.TyReal))
     
-    test "typeOf test right not on pair" (typeCheck tyBase (Right (Val (Float 4.1)))) (Failure "Right was not called on a pair.")
+    test "typeOf test right not on pair" (typeCheck tyBase (Right (Val (Float 4.1)))) (Failure "Could not unify Real and (Pair-of L#7 R#8)")
 
      -- And tests 
     test "typeof test and success" (typeCheck tyBase (And (Val (Boolean True)) (Val (Boolean True)))) (Success (T.TyBase T.TyBoolean))
@@ -296,11 +284,11 @@ test_typeOf = do
     -- If tests
     test "typeOf test if success" (typeCheck tyBase (If (Val (Boolean False)) (Val (Integer 10)) (Val (Integer 11)))) (Success (T.TyBase T.TyInteger))
         
-    test "typeOf test if fail 1" (typeCheck tyBase (If (Val (Integer 9)) (Val (Integer 10)) (Val (Integer 11)))) (fail "First argument in If was not of type TyBoolean." )   
+    test "typeOf test if fail 1" (typeCheck tyBase (If (Val (Integer 9)) (Val (Integer 10)) (Val (Integer 11)))) (fail "Could not unify Integer and Boolean")   
 
-    test "typeOf test if fail 2" (typeCheck tyBase (If (Val (Boolean True)) (Val (Integer 10)) (Val (Boolean False)))) (fail "Incompatible return types for If")  
+    test "typeOf test if fail 2" (typeCheck tyBase (If (Val (Boolean True)) (Val (Integer 10)) (Val (Float 1.5)))) (fail "Could not unify Integer and Real")  
 
-    test "typeOf test if fail 2" (typeCheck tyBase (If (Val (Boolean True)) (Val (Integer 10)) (Val (Boolean False)))) (fail "Incompatible return types for If") 
+    test "typeOf test if fail 2" (typeCheck tyBase (If (Val (Boolean True)) (Val (Integer 10)) (Val (Boolean False)))) (fail "Could not unify Integer and Boolean") 
 
     --  Cond Tests
     test "typeOf test Cond success 1" (typeCheck tyBase ( Cond [(Val (Boolean True), 
@@ -359,41 +347,41 @@ test_typeOf = do
 
     test "typeOf test app with + success" (typeCheck tyBase (App [Var "+", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
-    test "typeOf test app with + fail not enough arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#10)")
+    test "typeOf test app with + fail not enough arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#18)")
 
-    test "typeOf test app with + fail too many arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#11)")
+    test "typeOf test app with + fail too many arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#19)")
 
-    test "typeOf test app with + argument types did not match 1" (typeCheck tyBase (App [Var "+", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#12)")
+    test "typeOf test app with + argument types did not match 1" (typeCheck tyBase (App [Var "+", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#20)")
 
-    test "typeOf test app with + argument types did not match 2" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#13)")
+    test "typeOf test app with + argument types did not match 2" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#21)")
 
     -- Sub Tests
 
     test "typeOf test app with - success" (typeCheck tyBase (App [Var "-", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
-    test "typeOf test app with - fail not enough arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#15)")
+    test "typeOf test app with - fail not enough arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#23)")
 
-    test "typeOf test app with - fail too many arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#16)")
+    test "typeOf test app with - fail too many arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#24)")
 
-    test "typeOf test app with - argument types did not match 1" (typeCheck tyBase (App [Var "-", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#17)")
+    test "typeOf test app with - argument types did not match 1" (typeCheck tyBase (App [Var "-", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#25)")
 
-    test "typeOf test app with - argument types did not match 2" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#18)")
+    test "typeOf test app with - argument types did not match 2" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#26)")
 
     -- Mul Tests
 
     test "typeOf test app with * success" (typeCheck tyBase (App [Var "*", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
     test "typeOf test app with * fail not enough arguments" (typeCheck tyBase (App [Var "*", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#20)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#28)")
 
     test "typeOf test app with * fail too many arguments" (typeCheck tyBase (App [Var "*", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#21)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#29)")
 
     test "typeOf test app with * argument types did not match 1" (typeCheck tyBase (App [Var "*", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#22)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#30)")
 
     test "typeOf test app with * argument types did not match 2" (typeCheck tyBase (App [Var "*", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#23)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#31)")
 
     -- Div Tests
 
@@ -401,10 +389,10 @@ test_typeOf = do
      (Success (T.TyBase T.TyInteger))
 
     test "typeOf test app with / fail not enough arguments" (typeCheck tyBase (App [Var "/", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#25)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#33)")
 
     test "typeOf test app with / fail too many arguments" (typeCheck tyBase (App [Var "/", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#26)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#34)")
 
     test "typeOf test app with / argument types did not match 1" (typeCheck tyBase (App [Var "/", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -417,10 +405,10 @@ test_typeOf = do
     test "typeOf test app with not success" (typeCheck tyBase (App [Var "not", Val (Boolean False)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with not fail not enough arguments" (typeCheck tyBase (App [Var "not"])) 
-     (fail "Could not unify (-> Boolean Boolean) and (-> Y#28)")
+     (fail "Could not unify (-> Boolean Boolean) and (-> Y#36)")
 
     test "typeOf test app with not fail too many arguments" (typeCheck tyBase (App [Var "not", Val (Boolean True), Val (Boolean False)])) 
-     (fail "Could not unify (-> Boolean Boolean) and (-> Boolean Boolean Y#29)")
+     (fail "Could not unify (-> Boolean Boolean) and (-> Boolean Boolean Y#37)")
 
     test "typeOf test app with not argument types did not match" (typeCheck tyBase (App [Var "not", Val (Float 5.5)]))
      (fail "Could not unify Boolean and Real")
@@ -430,10 +418,10 @@ test_typeOf = do
     test "typeOf test app with < success" (typeCheck tyBase (App [Var "<", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with < fail not enough arguments" (typeCheck tyBase (App [Var "<", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#31)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#39)")
 
     test "typeOf test app with < fail too many arguments" (typeCheck tyBase (App [Var "<", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#32)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#40)")
 
     test "typeOf test app with < argument types did not match 1" (typeCheck tyBase (App [Var "<", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -446,10 +434,10 @@ test_typeOf = do
     test "typeOf test app with > success" (typeCheck tyBase (App [Var ">", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with > fail not enough arguments" (typeCheck tyBase (App [Var ">", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#34)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#42)")
 
     test "typeOf test app with > fail too many arguments" (typeCheck tyBase (App [Var ">", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#35)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#43)")
 
     test "typeOf test app with > argument types did not match 1" (typeCheck tyBase (App [Var ">", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -462,10 +450,10 @@ test_typeOf = do
     test "typeOf test app with = success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with = fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#37)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#45)")
 
     test "typeOf test app with = fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#38)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#46)")
 
     test "typeOf test app with = argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -478,10 +466,10 @@ test_typeOf = do
     test "typeOf test app with <= success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with <= fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#40)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#48)")
 
     test "typeOf test app with <= fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#41)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#49)")
 
     test "typeOf test app with <= argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -494,10 +482,10 @@ test_typeOf = do
     test "typeOf test app with >= success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with >= fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#43)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#51)")
 
     test "typeOf test app with >= fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#44)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#52)")
 
     test "typeOf test app with >= argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -508,10 +496,10 @@ test_typeOf = do
     -- Lambda tests 
     
     test "typeOf test lambda: simple 1" (typeCheck tyBase (Lambda ["x"] (Var "x")))  
-     (Success (T.TyArrow [T.TyVar "X#45", T.TyVar "X#45"]))
+     (Success (T.TyArrow [T.TyVar "X#53", T.TyVar "X#53"]))
 
     test "typeOf test lambda: simple 2" (typeCheck tyBase (Lambda ["x", "y"] (Var "x"))) 
-     (Success (T.TyArrow [T.TyVar "X#46", T.TyVar "X#47", T.TyVar "X#46"]))
+     (Success (T.TyArrow [T.TyVar "X#54", T.TyVar "X#55", T.TyVar "X#54"]))
 
     test "typeOf test lambda with app 1" (typeCheck tyBase (App [Lambda ["x" ] (Var "x"), Val (Boolean False)])) 
      (Success (T.TyBase T.TyBoolean))
@@ -521,15 +509,15 @@ test_typeOf = do
      (Success (T.TyBase T.TyInteger))
 
     test "typeOf test lambda with app too few args 1" (typeCheck tyBase (App [Lambda ["x"] (Var "x")])) 
-     (fail "Could not unify (-> X#54 X#54) and (-> Y#55)")
+     (fail "Could not unify (-> X#62 X#62) and (-> Y#63)")
 
     test "typeOf test lambda with app too few args 2" (typeCheck tyBase (App 
      [Lambda ["x", "y"] (App [Var "+", Var "x", Var "y"]) , Val (Integer 15)])) 
-     (fail "Could not unify (-> X#56 X#57 Y#58) and (-> Integer Y#59)")
+     (fail "Could not unify (-> X#64 X#65 Y#66) and (-> Integer Y#67)")
 
     test "typeOf test lambda with app too many args" (typeCheck tyBase (App 
      [Lambda ["x", "y" ] (App [Var "+", Var "x", Var "y"]) , Val (Integer 15), Val (Integer 20), Val (Integer 22)])) 
-     (fail "Could not unify (-> X#60 X#61 Y#62) and (-> Integer Integer Integer Y#63)") 
+     (fail "Could not unify (-> X#68 X#69 Y#70) and (-> Integer Integer Integer Y#71)") 
 
     test "typeOf test lambda with app types do not match 1" (typeCheck tyBase (App 
      [Lambda ["x", "y"] (App [Var "+", Var "x", Var "y"]) , Val (Float 5.5), Val (Integer 15)])) 
@@ -541,58 +529,55 @@ test_typeOf = do
 
      -- Tests for List Exprs 
 
-    -- test "typeOf test nil" (typeOf tyBase Nil) (Success )  
+    test "typeOf test nil" (typeCheck tyBase Nil) (Success $ T.TyList (T.TyVar "Nil"))
     
-    -- test "typeOf test cons all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) Nil)) 
-    --  (Success $ TyList (TyBase TyInteger))
+    test "typeOf test cons all same type 1" (typeCheck tyBase (Cons (Val $ Integer 10) Nil)) 
+     (Success $ T.TyList (T.TyBase T.TyInteger))
 
-    -- test "typeOf test cons all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Float 5.5) Nil)))
-    --  (Success $ TyList (TyBase TyReal))
+    test "typeOf test cons all same type 2" (typeCheck tyBase (Cons (Val $ Float 6) (Cons (Val $ Float 5.5) Nil)))
+     (Success $ T.TyList (T.TyBase T.TyReal))
 
-    -- test "typeOf test cons not all same type 1" (typeOf tyBase (Cons (Val $ Integer 10) Nil)) 
-    --  (fail "Cons list has inconsistent types")
+    test "typeOf test cons not all same type" (typeCheck tyBase (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil)))
+     (fail "Could not unify Boolean and Real")
 
-    -- test "typeOf test cons not all same type 2" (typeOf tyBase (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil)))
-    --  (fail "Cons list has inconsistent types")
+    test "typeOf test cons inner element fails" (typeCheck tyBase (Cons (App [Var "+", Val $ Float 5.5, Val $ Boolean False]) Nil))
+     (fail "Could not unify Integer and Real") 
 
-    -- test "typeOf test cons inner element fails" (typeOf tyBase (Cons (App [Var "+", Val $ Float 5.5, Val $ Boolean False]) Nil))
-    --  (fail "Cons failed because of inner element error: App argument types do not match.") 
+    test "typeOf test list? succeeds" (typeCheck tyBase (List_Pred (Cons (Val $ Integer 10) Nil)))
+     (Success $ T.TyBase T.TyBoolean)
 
-    -- test "typeOf test list? succeeds" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) Nil)))
-    --  (Success $ TyBase TyBoolean)
+    test "typeOf test list? fails" (typeCheck tyBase (List_Pred (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil))))
+     (fail "Could not unify Boolean and Real")  
 
-    -- test "typeOf test list? fails" (typeOf tyBase (List_Pred (Cons (Val $ Integer 10) Nil)))
-    --  (fail "List_Pred failed because: Cons list has inconsistent types")  
+    test "typeOf test cons? succeeds" (typeCheck tyBase (Cons_Pred (Cons (Val $ Integer 10) Nil)))
+     (Success $ T.TyBase T.TyBoolean)
 
-    -- test "typeOf test cons? succeeds" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) Nil)))
-    --  (Success $ TyBase TyBoolean)
+    test "typeOf test cons? fails" (typeCheck tyBase (Cons_Pred (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil))))
+     (fail "Could not unify Boolean and Real")   
 
-    -- test "typeOf test cons? fails" (typeOf tyBase (Cons_Pred (Cons (Val $ Integer 10) Nil)))
-    --  (fail "Cons_Pred failed because: Cons list has inconsistent types")   
+    test "typeOf test nil? succeeds" (typeCheck tyBase (Nil_Pred (Cons (Val $ Integer 10) Nil )))
+     (Success $ T.TyBase T.TyBoolean)
 
-    -- test "typeOf test nil? succeeds" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) Nil )))
-    --  (Success $ TyBase TyBoolean)
+    test "typeOf test nil? fails" (typeCheck tyBase (Nil_Pred (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil))))
+     (fail "Could not unify Boolean and Real")  
 
-    -- test "typeOf test nil? fails" (typeOf tyBase (Nil_Pred (Cons (Val $ Integer 10) Nil )))
-    --  (fail "Nil_Pred failed because: Cons list has inconsistent types")  
+    test "typeOf test head succeeds" (typeCheck tyBase (Head (Cons (Val $ Integer 10) Nil)))
+     (Success $ T.TyBase T.TyInteger)
 
-    -- test "typeOf test head succeeds" (typeOf tyBase (Head (Cons (Val $ Integer 10) Nil)))
-    --  (Success $ TyBase TyInteger)
+    test "typeOf test head fails because expr it is called on fails" (typeCheck tyBase (Head (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil))))
+     (fail "Could not unify Boolean and Real")  
 
-    -- test "typeOf test head fails because expr it is called on fails" (typeOf tyBase (Head (Cons (Val $ Integer 10) Nil)))
-    --  (fail "Head failed because: Cons list has inconsistent types")  
+    test "typeOf test head fails because expr it is called on is not a cons" (typeCheck tyBase (Head (Val $ Integer 50))) 
+     (fail "Could not unify (List-of A#81) and Integer")
 
-    -- test "typeOf test head fails because expr it is called on is not a cons" (typeOf tyBase (Head (Val $ Integer 50))) 
-    --  (fail "Head not called on list.")
+    test "typeOf test tail succeeds" (typeCheck tyBase (Tail (Cons (Val $ Integer 10) Nil)))
+     (Success $ T.TyList $ T.TyBase T.TyInteger)
 
-    -- test "typeOf test tail succeeds" (typeOf tyBase (Tail (Cons (Val $ Integer 10) Nil )))
-    --  (Success $ TyList $ TyBase TyInteger)
+    test "typeOf test tail fails because expr it is called on fails" (typeCheck tyBase (Tail (Cons (Val $ Float 6) (Cons (Val $ Boolean True) Nil))))
+     (fail "Could not unify Boolean and Real")  
 
-    -- test "typeOf test tail fails because expr it is called on fails" (typeOf tyBase (Tail (Cons (Val $ Integer 10) Nil)))
-    --  (fail "Tail failed because: Cons list has inconsistent types")  
-
-    -- test "typeOf test tail fails because expr it is called on is not a cons" (typeOf tyBase (Tail (Val $ Integer 50))) 
-    --  (fail "Tail not called on list.") 
+    test "typeOf test tail fails because expr it is called on is not a cons" (typeCheck tyBase (Tail (Val $ Integer 50))) 
+     (fail "Could not unify (List-of B#83) and Integer") 
    
 
 
@@ -653,20 +638,23 @@ test_typeOfProgramSExpr = do
       (Success $ S.Symbol "Integer")
 
      test "typeOfProgramSExpr 4" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example4.pss")))) 
-      (Success $ S.List [S.Symbol "Pair-of", S.List [S.Symbol "->", S.Symbol "Integer", S.Symbol "Boolean"], 
-                                             S.List [S.Symbol "->", S.Symbol "Boolean", S.Symbol "Integer"]])
+      (Success (S.List [S.Symbol "Pair-of", 
+                        S.List [S.Symbol "Pair-of",S.List [S.Symbol "->",S.Symbol "Integer",S.Symbol "Integer",S.Symbol "Boolean"], 
+                                                   S.List [S.Symbol "->",S.Symbol "Boolean",S.Symbol "Integer"]],
+                        S.List [S.Symbol "->",S.Symbol "Integer", 
+                                S.List [S.Symbol "Pair-of",S.Symbol "Boolean",S.Symbol "Integer"], S.Symbol "Boolean", S.Symbol "Boolean"]]))
 
      test "typeOfProgramSExpr 5" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example5.pss")))) 
       (Success (S.List [S.Symbol "Pair-of", S.Symbol "Integer", S.Symbol "Integer"]))
 
      test "typeOfProgramSExpr 6" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example6.pss")))) 
-      (Success (S.List [S.Symbol "Pair-of", S.Symbol "Integer", S.Symbol "Integer"]))                                                                             
+      (Success (S.List [S.Symbol "List-of", S.Symbol "Integer"]))                                                                             
                  
      test "typeOfProgramSExpr function defs dont match 1" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_1) 
       (fail "Function or variable x actual type is not the same as the expected type.")
 
      test "typeOfProgramSExpr function defs dont match 2" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_2) 
-      (fail "Possible function or variable f with incorrect type: Argument types do not match.")
+      (fail "Function or variable f actual type is not the same as the expected type.")
 
      test "typeOfProgramSExpr function defs dont match 3" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_3) 
       (fail "Function or variable g actual type is not the same as the expected type.")  
