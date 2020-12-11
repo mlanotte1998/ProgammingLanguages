@@ -122,10 +122,10 @@ typeOf tenv (Cond ((e1, e2) : xs) e3) = do
     (ty2, c2) <- typeOf tenv e2
     clist <- typeOfCondList tenv xs ty2
     case e3 of  
-        Nothing -> return (ty2, clist)
+        Nothing -> return (ty2, [(ty1, T.TyBase T.TyBoolean)] ++ c1 ++ c2 ++ clist)
         Just e3' -> do
             (ty3, c3) <- typeOf tenv e3'
-            return (ty2, [(ty1, T.TyBase T.TyBoolean)] ++ clist ++ [(ty3, ty2)])                           
+            return (ty2, [(ty1, T.TyBase T.TyBoolean)] ++ c1 ++ c2 ++ clist ++ [(ty3, ty2)] ++ c3)                           
         where 
             -- ensures that the whole cond list has a boolean clause and the same
             -- expr type for the e2 of each pairing and if so then return that type. 
@@ -136,7 +136,7 @@ typeOf tenv (Cond ((e1, e2) : xs) e3) = do
                 (ty1, c1) <- typeOf tenv e1 
                 (ty2, c2) <- typeOf tenv e2 
                 rest <- typeOfCondList tenv xs t     
-                return ([(ty1, T.TyBase T.TyBoolean)] ++ [(ty2, t)] ++ rest)
+                return ([(ty1, T.TyBase T.TyBoolean)] ++ c1 ++ [(ty2, t)] ++ c2 ++ rest)
 -- gotta fix nil                
 -- typeOf _ Nil = return (???) 
 -- -- Probably need to iterate through cons until reaching nil 
@@ -328,7 +328,7 @@ test_typeOf = do
      App [Var "+", Val (Integer 5), Val (Integer 2)]), 
         (Val (Boolean False), App [Var "/", Val (Integer 4), Val (Integer 2)])]
          (Just (Val (Boolean False)))))
-       (Failure "Cond doesnt have the same return types.")
+       (Failure "Could not unify Boolean and Integer")
 
     test "typeOf Cond with else that is the same return type" (typeCheck tyBase (Cond [(Val (Boolean False), 
      App [Var "+", Val (Integer 5), Val (Integer 2)]), 
@@ -340,7 +340,7 @@ test_typeOf = do
      App [Var "+", Val (Integer 5), Val (Integer 2)]), 
         (Val (Boolean True), Val (Float 10.5))]
          (Just (App [Var "-", Val (Integer 5), Val (Integer 2)]))))
-       (fail "Cond doesnt have the same return types.")   
+       (Failure "Could not unify Real and Integer")   
 
     -- Predicates
 
@@ -359,41 +359,41 @@ test_typeOf = do
 
     test "typeOf test app with + success" (typeCheck tyBase (App [Var "+", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
-    test "typeOf test app with + fail not enough arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#7)")
+    test "typeOf test app with + fail not enough arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#10)")
 
-    test "typeOf test app with + fail too many arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#8)")
+    test "typeOf test app with + fail too many arguments" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#11)")
 
-    test "typeOf test app with + argument types did not match 1" (typeCheck tyBase (App [Var "+", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#9)")
+    test "typeOf test app with + argument types did not match 1" (typeCheck tyBase (App [Var "+", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#12)")
 
-    test "typeOf test app with + argument types did not match 2" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#10)")
+    test "typeOf test app with + argument types did not match 2" (typeCheck tyBase (App [Var "+", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#13)")
 
     -- Sub Tests
 
     test "typeOf test app with - success" (typeCheck tyBase (App [Var "-", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
-    test "typeOf test app with - fail not enough arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#12)")
+    test "typeOf test app with - fail not enough arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Y#15)")
 
-    test "typeOf test app with - fail too many arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#13)")
+    test "typeOf test app with - fail too many arguments" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) (Failure "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#16)")
 
-    test "typeOf test app with - argument types did not match 1" (typeCheck tyBase (App [Var "-", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#14)")
+    test "typeOf test app with - argument types did not match 1" (typeCheck tyBase (App [Var "-", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#17)")
 
-    test "typeOf test app with - argument types did not match 2" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#15)")
+    test "typeOf test app with - argument types did not match 2" (typeCheck tyBase (App [Var "-", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#18)")
 
     -- Mul Tests
 
     test "typeOf test app with * success" (typeCheck tyBase (App [Var "*", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyInteger))
 
     test "typeOf test app with * fail not enough arguments" (typeCheck tyBase (App [Var "*", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#17)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#20)")
 
     test "typeOf test app with * fail too many arguments" (typeCheck tyBase (App [Var "*", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#18)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#21)")
 
     test "typeOf test app with * argument types did not match 1" (typeCheck tyBase (App [Var "*", Val (Boolean True), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#19)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Boolean Integer Integer Y#22)")
 
     test "typeOf test app with * argument types did not match 2" (typeCheck tyBase (App [Var "*", Val (Integer 10), Val (Boolean False), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#20)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Boolean Integer Y#23)")
 
     -- Div Tests
 
@@ -401,10 +401,10 @@ test_typeOf = do
      (Success (T.TyBase T.TyInteger))
 
     test "typeOf test app with / fail not enough arguments" (typeCheck tyBase (App [Var "/", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#22)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Y#25)")
 
     test "typeOf test app with / fail too many arguments" (typeCheck tyBase (App [Var "/", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#23)")
+     (fail "Could not unify (-> Integer Integer Integer) and (-> Integer Integer Integer Y#26)")
 
     test "typeOf test app with / argument types did not match 1" (typeCheck tyBase (App [Var "/", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -417,10 +417,10 @@ test_typeOf = do
     test "typeOf test app with not success" (typeCheck tyBase (App [Var "not", Val (Boolean False)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with not fail not enough arguments" (typeCheck tyBase (App [Var "not"])) 
-     (fail "Could not unify (-> Boolean Boolean) and (-> Y#25)")
+     (fail "Could not unify (-> Boolean Boolean) and (-> Y#28)")
 
     test "typeOf test app with not fail too many arguments" (typeCheck tyBase (App [Var "not", Val (Boolean True), Val (Boolean False)])) 
-     (fail "Could not unify (-> Boolean Boolean) and (-> Boolean Boolean Y#26)")
+     (fail "Could not unify (-> Boolean Boolean) and (-> Boolean Boolean Y#29)")
 
     test "typeOf test app with not argument types did not match" (typeCheck tyBase (App [Var "not", Val (Float 5.5)]))
      (fail "Could not unify Boolean and Real")
@@ -430,10 +430,10 @@ test_typeOf = do
     test "typeOf test app with < success" (typeCheck tyBase (App [Var "<", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with < fail not enough arguments" (typeCheck tyBase (App [Var "<", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#28)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#31)")
 
     test "typeOf test app with < fail too many arguments" (typeCheck tyBase (App [Var "<", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#29)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#32)")
 
     test "typeOf test app with < argument types did not match 1" (typeCheck tyBase (App [Var "<", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -446,10 +446,10 @@ test_typeOf = do
     test "typeOf test app with > success" (typeCheck tyBase (App [Var ">", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with > fail not enough arguments" (typeCheck tyBase (App [Var ">", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#31)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#34)")
 
     test "typeOf test app with > fail too many arguments" (typeCheck tyBase (App [Var ">", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#32)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#35)")
 
     test "typeOf test app with > argument types did not match 1" (typeCheck tyBase (App [Var ">", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -462,10 +462,10 @@ test_typeOf = do
     test "typeOf test app with = success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with = fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#34)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#37)")
 
     test "typeOf test app with = fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#35)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#38)")
 
     test "typeOf test app with = argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -478,10 +478,10 @@ test_typeOf = do
     test "typeOf test app with <= success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with <= fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#37)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#40)")
 
     test "typeOf test app with <= fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#38)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#41)")
 
     test "typeOf test app with <= argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -494,10 +494,10 @@ test_typeOf = do
     test "typeOf test app with >= success" (typeCheck tyBase (App [Var "=", Val (Integer 10),Val (Integer 20)])) (Success (T.TyBase T.TyBoolean))
 
     test "typeOf test app with >= fail not enough arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#40)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Y#43)")
 
     test "typeOf test app with >= fail too many arguments" (typeCheck tyBase (App [Var "=", Val (Integer 10), Val (Integer 5), Val (Integer 30)])) 
-     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#41)")
+     (fail "Could not unify (-> Integer Integer Boolean) and (-> Integer Integer Integer Y#44)")
 
     test "typeOf test app with >= argument types did not match 1" (typeCheck tyBase (App [Var "=", Val (Boolean True), Val (Integer 5)])) 
      (fail "Could not unify Integer and Boolean")
@@ -508,10 +508,10 @@ test_typeOf = do
     -- Lambda tests 
     
     test "typeOf test lambda: simple 1" (typeCheck tyBase (Lambda ["x"] (Var "x")))  
-     (Success (T.TyArrow [T.TyVar "X#42", T.TyVar "X#42"]))
+     (Success (T.TyArrow [T.TyVar "X#45", T.TyVar "X#45"]))
 
     test "typeOf test lambda: simple 2" (typeCheck tyBase (Lambda ["x", "y"] (Var "x"))) 
-     (Success (T.TyArrow [T.TyVar "X#43", T.TyVar "X#44", T.TyVar "X#43"]))
+     (Success (T.TyArrow [T.TyVar "X#46", T.TyVar "X#47", T.TyVar "X#46"]))
 
     test "typeOf test lambda with app 1" (typeCheck tyBase (App [Lambda ["x" ] (Var "x"), Val (Boolean False)])) 
      (Success (T.TyBase T.TyBoolean))
@@ -521,15 +521,15 @@ test_typeOf = do
      (Success (T.TyBase T.TyInteger))
 
     test "typeOf test lambda with app too few args 1" (typeCheck tyBase (App [Lambda ["x"] (Var "x")])) 
-     (fail "Could not unify (-> X#51 X#51) and (-> Y#52)")
+     (fail "Could not unify (-> X#54 X#54) and (-> Y#55)")
 
     test "typeOf test lambda with app too few args 2" (typeCheck tyBase (App 
      [Lambda ["x", "y"] (App [Var "+", Var "x", Var "y"]) , Val (Integer 15)])) 
-     (fail "Could not unify (-> X#53 X#54 Y#55) and (-> Integer Y#56)")
+     (fail "Could not unify (-> X#56 X#57 Y#58) and (-> Integer Y#59)")
 
     test "typeOf test lambda with app too many args" (typeCheck tyBase (App 
      [Lambda ["x", "y" ] (App [Var "+", Var "x", Var "y"]) , Val (Integer 15), Val (Integer 20), Val (Integer 22)])) 
-     (fail "Could not unify (-> X#57 X#58 Y#59) and (-> Integer Integer Integer Y#60)") 
+     (fail "Could not unify (-> X#60 X#61 Y#62) and (-> Integer Integer Integer Y#63)") 
 
     test "typeOf test lambda with app types do not match 1" (typeCheck tyBase (App 
      [Lambda ["x", "y"] (App [Var "+", Var "x", Var "y"]) , Val (Float 5.5), Val (Integer 15)])) 
