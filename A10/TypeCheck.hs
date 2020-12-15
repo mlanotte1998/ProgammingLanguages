@@ -191,9 +191,16 @@ ensureGlobalDefTypes tenv ((Define (Sig name _) e):xs) = do
         Success ty -> do 
             -- will always be defined but in here as precaution
             ty' <- fromMaybe' ("Variable " ++ name ++ " is not defined") $ get tenv name
-            if ty == ty' 
-                then ensureGlobalDefTypes tenv xs 
-                else fail $ "Function or variable " ++ name ++ " actual type is not the same as the expected type."
+            -- unify the two to make sure they are the same or equivalent with ty maybe being more specific
+            -- if this fails then the given and inferred types are not equivalent at all. 
+            case T.unify [(ty, ty')] of 
+                -- then apply the subst and check if the given type is the same as the inferred type (from the applySubst)
+                    -- if they are equal then keep going, otherwuse then the inferred type is more specific
+                    -- then the given type ty'
+                Success u -> if ty' == T.applySubst u ty 
+                    then ensureGlobalDefTypes tenv xs 
+                    else fail $ "Function or variable " ++ name ++ "'s inferred type is more specific than the given type."
+                _ -> fail $ "Function or variable " ++ name ++ " actual type is not the same as the expected type."
         Failure f -> fail $ "Possible function or variable " ++ name ++ " with incorrect type: " ++ f        
 
 
@@ -209,7 +216,15 @@ typeOfProgramSExpr sexprs = do
             case typeOfProgram tenv' (Program globals e) of 
                 Success ty -> return $ T.toSExpression ty
                 Failure f -> fail f
-        Failure f -> fail f                      
+        Failure f -> fail f       
+
+-- Function for unifying and applying types. We use this in or program functions and for the tests
+-- because it makes the results simple. 
+typeCheck :: TyEnv -> Expr -> Result T.Type
+typeCheck tenv e = do
+  (t, c) <- typeOf tenv e
+  s <- T.unify c
+  return $ T.applySubst s t                         
 
 
 -- =====================================================================================================================
@@ -232,13 +247,7 @@ tyBase = fromList
       ("=", integerToIntegerIsBoolean),
       ("<=", integerToIntegerIsBoolean),
       (">=", integerToIntegerIsBoolean)
-  ]
-
-typeCheck :: TyEnv -> Expr -> Result T.Type
-typeCheck tenv e = do
-  (t, c) <- typeOf tenv e
-  s <- T.unify c
-  return $ T.applySubst s t   
+  ] 
 
 
 -- =================================================================================================================
@@ -622,7 +631,17 @@ sexpr_ex_incorrect_signature =
 sexpr_ex_function_body_undefined_variable = 
      [S.List [S.Symbol "l", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "Integer", S.Symbol "real"]], 
             S.List[S.Symbol "defun", S.Symbol "l", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "y", S.Integer 1]],
-            S.Integer 10]                    
+            S.Integer 10]  
+
+{- New to check that part 2 works correctly, need this to fail
+(f : (-> A A))
+(defun f (x) (+ x 1))
+-}
+
+sexpr_ex_question2_fail =     
+    [S.List [S.Symbol "f", S.Symbol ":", S.List[S.Symbol "->", S.Symbol "A", S.Symbol "A"]], 
+            S.List[S.Symbol "defun", S.Symbol "f", S.List[S.Symbol "x"], S.List[S.Symbol "+", S.Symbol "x", S.Integer 1]],
+            S.Integer 10]                          
 
 
 
@@ -648,7 +667,18 @@ test_typeOfProgramSExpr = do
       (Success (S.List [S.Symbol "Pair-of", S.Symbol "Integer", S.Symbol "Integer"]))
 
      test "typeOfProgramSExpr 6" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example6.pss")))) 
-      (Success (S.List [S.Symbol "List-of", S.Symbol "Integer"]))                                                                             
+      (Success (S.List [S.Symbol "List-of", S.Symbol "Integer"]))            
+
+     test "typeOfProgramSExpr 7" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example7.pss")))) 
+      (Success (S.Symbol "Integer"))
+
+     test "typeOfProgramSExpr 8" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example8.pss")))) 
+      (Success (S.List [S.Symbol "Pair-of",
+                                  S.List [S.Symbol "Pair-of",S.List [S.Symbol "List-of",S.Symbol "Integer"],S.List [S.Symbol "List-of",S.Symbol "Integer"]],
+                                  S.List [S.Symbol "Pair-of",S.List [S.Symbol "List-of",S.Symbol "Integer"],S.List [S.Symbol "List-of",S.Symbol "Integer"]]]))    
+
+     test "typeOfProgramSExpr 9" (typeOfProgramSExpr (typeOfProgramSExprHelper (unsafePerformIO (fromFile "example9.pss")))) 
+      (Success (S.List [S.Symbol "List-of",S.List [S.Symbol "Pair-of",S.Symbol "Integer",S.Symbol "Boolean"]]))                                                              
                  
      test "typeOfProgramSExpr function defs dont match 1" (typeOfProgramSExpr sexpr_ex_incorrect_function_def_1) 
       (fail "Function or variable x actual type is not the same as the expected type.")
@@ -664,6 +694,12 @@ test_typeOfProgramSExpr = do
 
      test "typeOfProgramSExpr function body has undefined variable" (typeOfProgramSExpr sexpr_ex_function_body_undefined_variable) 
       (fail "Given s-expression cannot be parsed as a type")   
+
+     -- Test very important for making sure that the inferred type is not more specific than the given type
+     -- as requested for part 2 of the assignment. 
+     test "typeOfProgramSExpr function has more specific type signature" (typeOfProgramSExpr sexpr_ex_question2_fail) 
+      (fail "Function or variable f's inferred type is more specific than the given type.")   
+ 
 
 ex1 :: Expr
 ex1 = (Lambda ["x"] (Var "x"))

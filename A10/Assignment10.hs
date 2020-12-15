@@ -2,10 +2,12 @@
 Module      :  Assignment10
 Description :  Assignment10 submission for CS 4400.
 Copyright   :  (c) Ferd, 2020
-               <your name here>
+                   Michael Lanotte, 2020
+                   Rachel Johanek, 2020
 
 Maintainer  :  f.vesely@northeastern.edu
-               <your email here>
+               lanotte.m@northeastern.edu
+               johanek.r@northeastern.edu
 -}
 
 import qualified TypeCheck
